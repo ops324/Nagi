@@ -234,7 +234,7 @@ export default function Home() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="icon-anim w-9 h-9">
-                <img src="/icon.png" alt="Nagi" className="w-9 h-9 block" />
+                <img src="/icon.png" alt="Nagi" className="w-9 h-9 block rounded-xl" />
               </div>
               <div>
                 <h1 className="text-2xl font-extralight tracking-[0.2em]" style={{ color: "var(--text-secondary)" }}>凪</h1>
