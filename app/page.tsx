@@ -6,6 +6,16 @@ import { Entry, Emotion, EMOTION_COLORS } from "./types";
 import { createClient } from "@/lib/supabase/client";
 import { logout } from "./auth/actions";
 
+// 今日から n 日前の日付文字列を返す（JST）
+function seedDate(daysAgo: number, time: string): string {
+  const d = new Date();
+  d.setDate(d.getDate() - daysAgo);
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}T${time}+09:00`;
+}
+
 const SEED_ENTRIES: Entry[] = [
   {
     id: "u-seed-9",
@@ -14,7 +24,7 @@ const SEED_ENTRIES: Entry[] = [
     emotions: [{ label: "感謝", score: 0.8 }, { label: "充実", score: 0.6 }, { label: "喜び", score: 0.4 }],
     dominant: "感謝",
     energy: 9,
-    createdAt: "2026-03-07T08:30:00+09:00",
+    createdAt: seedDate(0, "08:30:00"),
   },
   {
     id: "u-seed-8",
@@ -23,7 +33,7 @@ const SEED_ENTRIES: Entry[] = [
     emotions: [{ label: "希望", score: 0.7 }, { label: "充実", score: 0.5 }, { label: "感謝", score: 0.3 }],
     dominant: "希望",
     energy: 8,
-    createdAt: "2026-03-06T16:00:00+09:00",
+    createdAt: seedDate(1, "16:00:00"),
   },
   {
     id: "u-seed-7",
@@ -32,7 +42,7 @@ const SEED_ENTRIES: Entry[] = [
     emotions: [{ label: "疲れ", score: 0.5 }, { label: "希望", score: 0.4 }, { label: "穏やか", score: 0.3 }],
     dominant: "疲れ",
     energy: 6,
-    createdAt: "2026-03-05T21:30:00+09:00",
+    createdAt: seedDate(2, "21:30:00"),
   },
   {
     id: "u-seed-6",
@@ -41,7 +51,7 @@ const SEED_ENTRIES: Entry[] = [
     emotions: [{ label: "充実", score: 0.6 }, { label: "希望", score: 0.5 }, { label: "安心", score: 0.3 }],
     dominant: "充実",
     energy: 7,
-    createdAt: "2026-03-04T19:00:00+09:00",
+    createdAt: seedDate(3, "19:00:00"),
   },
   {
     id: "u-seed-5",
@@ -50,7 +60,7 @@ const SEED_ENTRIES: Entry[] = [
     emotions: [{ label: "穏やか", score: 0.5 }, { label: "不安", score: 0.3 }, { label: "安心", score: 0.3 }],
     dominant: "穏やか",
     energy: 5,
-    createdAt: "2026-03-03T20:00:00+09:00",
+    createdAt: seedDate(4, "20:00:00"),
   },
   {
     id: "u-seed-4",
@@ -59,7 +69,7 @@ const SEED_ENTRIES: Entry[] = [
     emotions: [{ label: "希望", score: 0.6 }, { label: "穏やか", score: 0.4 }, { label: "不安", score: 0.3 }],
     dominant: "希望",
     energy: 6,
-    createdAt: "2026-03-02T15:30:00+09:00",
+    createdAt: seedDate(5, "15:30:00"),
   },
   {
     id: "u-seed-3",
@@ -68,7 +78,7 @@ const SEED_ENTRIES: Entry[] = [
     emotions: [{ label: "混乱", score: 0.6 }, { label: "不安", score: 0.4 }, { label: "穏やか", score: 0.2 }],
     dominant: "混乱",
     energy: 4,
-    createdAt: "2026-03-01T22:00:00+09:00",
+    createdAt: seedDate(6, "22:00:00"),
   },
   {
     id: "u-seed-2",
@@ -77,7 +87,7 @@ const SEED_ENTRIES: Entry[] = [
     emotions: [{ label: "希望", score: 0.5 }, { label: "穏やか", score: 0.4 }, { label: "混乱", score: 0.3 }],
     dominant: "希望",
     energy: 5,
-    createdAt: "2026-02-28T20:00:00+09:00",
+    createdAt: seedDate(7, "20:00:00"),
   },
   {
     id: "u-seed-1",
@@ -86,7 +96,7 @@ const SEED_ENTRIES: Entry[] = [
     emotions: [{ label: "疲れ", score: 0.7 }, { label: "不安", score: 0.5 }, { label: "混乱", score: 0.4 }],
     dominant: "疲れ",
     energy: 3,
-    createdAt: "2026-02-27T21:00:00+09:00",
+    createdAt: seedDate(8, "21:00:00"),
   },
 ];
 
