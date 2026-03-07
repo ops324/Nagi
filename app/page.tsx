@@ -156,7 +156,8 @@ export default function Home() {
         .order("created_at", { ascending: false });
 
       if (data && data.length > 0) {
-        setEntries(data as Entry[]);
+        // Supabase は snake_case (created_at) で返すため camelCase (createdAt) にマップ
+        setEntries(data.map(e => ({ ...e, createdAt: e.created_at })) as Entry[]);
       } else {
         // 初回ログイン時：SEEDデータをDBに保存
         const { data: { user: u } } = await supabase.auth.getUser();
@@ -222,7 +223,16 @@ export default function Home() {
         createdAt: new Date().toISOString(),
       };
 
-      await supabase.from("entries").insert({ ...entry, user_id: user.id });
+      await supabase.from("entries").insert({
+        id:         entry.id,
+        user_id:    user.id,
+        content:    entry.content,
+        comment:    entry.comment,
+        emotions:   entry.emotions,
+        dominant:   entry.dominant,
+        energy:     entry.energy,
+        created_at: entry.createdAt,  // camelCase → snake_case
+      });
       setEntries([entry, ...entries]);
       setContent("");
     } catch {
