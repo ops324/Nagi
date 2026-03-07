@@ -43,117 +43,123 @@
 }
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   光の精が穏やかに舞うアイコンアニメーション
+   1/f ゆらぎ：波の穏やかな揺れ
    ─────────────────────────────────────────────────────────────
    【設計思想】
-   「炎が昇る」直線運動をやめ、光の玉（オーブ）が
-   画面内に留まりながら楕円軌道でゆっくり漂う。
-   ① aurora-glow  : オーロラ色グロー。多色シフト。7.3s
-   ② orb-drift-a  : ::after  の大きな光玉。右中央を漂う。6.7s
-   ③ orb-drift-b  : ::before の小さな光玉。左上を漂う。8.3s
-   ④ icon-breathe : アイコン全体の微かな呼吸感。5.3s
-   7.3 × 6.7 × 8.3 × 5.3 ≈ 2154s ≫ 人間の知覚できる周期
-   → 繰り返しが見えず、光が生きているように感じられる
+   自然界の「1/f ゆらぎ」を近似。複数の互いに素な周期を
+   重ねることで、非周期的・有機的な波の動きを再現する。
+
+   ① wave-glow   : 水面に反射する光のゆらめき（色・明度変化）   8.1s
+   ② wave-drift  : 波の上でふわりと漂う位置移動（非対称軌道）  13.7s
+   ③ orb-wave-a  : ::after  大きな水紋の光                    11.3s
+   ④ orb-wave-b  : ::before 小さな水紋、独立して揺れる          7.9s
+
+   周期比 ≈ 黄金比（1.618）の近傍
+   最小公倍数 ≈ 8,100s（2時間以上）→ 繰り返しに気づかない
+   → 波が生きているように感じられる、心理的に落ち着く動き
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 
-/* グロー：オーロラのように色が穏やかに移ろう */
-@keyframes aurora-glow {
-  0%   { filter: drop-shadow(0 0  7px rgba(180,205,255,0.30)) drop-shadow(0 2px 20px rgba(200,185,255,0.14)); }
-  17%  { filter: drop-shadow(0 0 14px rgba(150,235,215,0.55)) drop-shadow(0 2px 30px rgba(170,245,225,0.26)); }
-  34%  { filter: drop-shadow(0 0  9px rgba(255,190,215,0.38)) drop-shadow(0 2px 22px rgba(255,175,205,0.18)); }
-  51%  { filter: drop-shadow(0 0 17px rgba(175,208,255,0.60)) drop-shadow(0 2px 36px rgba(160,198,255,0.30)); }
-  68%  { filter: drop-shadow(0 0 10px rgba(220,185,255,0.35)) drop-shadow(0 2px 24px rgba(210,175,255,0.17)); }
-  85%  { filter: drop-shadow(0 0 13px rgba(195,245,205,0.46)) drop-shadow(0 2px 28px rgba(175,238,188,0.22)); }
-  100% { filter: drop-shadow(0 0  7px rgba(180,205,255,0.30)) drop-shadow(0 2px 20px rgba(200,185,255,0.14)); }
+/* 水面の光ゆらぎ：青緑の静かな発光 */
+@keyframes wave-glow {
+  0%   { filter: drop-shadow(0 1px  7px rgba(100,200,185,0.20)) drop-shadow(0 0 18px rgba( 80,180,170,0.08)); }
+  22%  { filter: drop-shadow(0 1px 13px rgba( 75,185,205,0.38)) drop-shadow(0 0 26px rgba( 60,165,195,0.18)); }
+  44%  { filter: drop-shadow(0 1px  9px rgba(115,210,190,0.26)) drop-shadow(0 0 20px rgba( 95,195,175,0.12)); }
+  67%  { filter: drop-shadow(0 1px 16px rgba( 85,190,215,0.44)) drop-shadow(0 0 32px rgba( 65,170,205,0.22)); }
+  84%  { filter: drop-shadow(0 1px 10px rgba(105,205,188,0.30)) drop-shadow(0 0 22px rgba( 85,185,178,0.14)); }
+  100% { filter: drop-shadow(0 1px  7px rgba(100,200,185,0.20)) drop-shadow(0 0 18px rgba( 80,180,170,0.08)); }
 }
 
-/* 光玉 A の軌道：右〜中央を大きくゆっくり漂う */
-@keyframes orb-drift-a {
-  0%   { transform: translate( 10%,  8%) scale(1.00); opacity: 0.50; }
-  20%  { transform: translate( 18%, -7%) scale(1.13); opacity: 0.74; }
-  40%  { transform: translate(  4%,-20%) scale(0.92); opacity: 0.42; }
-  58%  { transform: translate( 21%,-11%) scale(1.09); opacity: 0.67; }
-  79%  { transform: translate( 11%, -3%) scale(1.03); opacity: 0.55; }
-  100% { transform: translate( 10%,  8%) scale(1.00); opacity: 0.50; }
+/* 波乗り：非対称な軌道で有機的な漂いを表現（1/f 近似） */
+@keyframes wave-drift {
+  0%   { transform: translateY(   0px) translateX(   0px) rotate(   0deg) scale(1.0000); }
+  11%  { transform: translateY(-1.1px) translateX( 0.4px) rotate( 0.12deg) scale(1.0012); }
+  23%  { transform: translateY(-0.4px) translateX( 0.8px) rotate( 0.22deg) scale(1.0018); }
+  38%  { transform: translateY( 0.7px) translateX( 0.5px) rotate( 0.08deg) scale(1.0008); }
+  51%  { transform: translateY( 0.2px) translateX(-0.1px) rotate(-0.06deg) scale(0.9996); }
+  63%  { transform: translateY(-0.9px) translateX(-0.4px) rotate(-0.15deg) scale(1.0010); }
+  76%  { transform: translateY(-1.4px) translateX( 0.2px) rotate( 0.18deg) scale(1.0016); }
+  88%  { transform: translateY(-0.2px) translateX( 0.5px) rotate( 0.10deg) scale(1.0006); }
+  100% { transform: translateY(   0px) translateX(   0px) rotate(   0deg) scale(1.0000); }
 }
 
-/* 光玉 B の軌道：左上をやや小さく独立して漂う */
-@keyframes orb-drift-b {
-  0%   { transform: translate(-10%,  4%) scale(0.87); opacity: 0.38; }
-  23%  { transform: translate( -3%,-14%) scale(0.77); opacity: 0.58; }
-  45%  { transform: translate(-17%, -7%) scale(0.91); opacity: 0.33; }
-  67%  { transform: translate( -5%,-19%) scale(0.80); opacity: 0.54; }
-  88%  { transform: translate(-12%, -1%) scale(0.85); opacity: 0.40; }
-  100% { transform: translate(-10%,  4%) scale(0.87); opacity: 0.38; }
+/* 大きな水紋：光が差し込む水面の揺れ */
+@keyframes orb-wave-a {
+  0%   { transform: translate(  8%,  5%) scale(1.00); opacity: 0.40; }
+  19%  { transform: translate( 16%, -4%) scale(1.07); opacity: 0.60; }
+  37%  { transform: translate(  5%,-13%) scale(0.93); opacity: 0.34; }
+  56%  { transform: translate( 17%, -7%) scale(1.05); opacity: 0.54; }
+  75%  { transform: translate(  9%, -2%) scale(1.01); opacity: 0.44; }
+  100% { transform: translate(  8%,  5%) scale(1.00); opacity: 0.40; }
 }
 
-/* 全体：微かな呼吸感・浮遊感 */
-@keyframes icon-breathe {
-  0%   { transform: translateY(  0px) scale(1.000); }
-  27%  { transform: translateY(-1.2px) scale(1.003); }
-  52%  { transform: translateY( 0.6px) scale(0.998); }
-  77%  { transform: translateY(-0.6px) scale(1.002); }
-  100% { transform: translateY(  0px) scale(1.000); }
+/* 小さな水紋：独立してゆっくり揺れる */
+@keyframes orb-wave-b {
+  0%   { transform: translate( -8%,  3%) scale(0.84); opacity: 0.30; }
+  25%  { transform: translate( -2%,-11%) scale(0.75); opacity: 0.48; }
+  47%  { transform: translate(-14%, -5%) scale(0.88); opacity: 0.26; }
+  70%  { transform: translate( -4%,-15%) scale(0.77); opacity: 0.44; }
+  87%  { transform: translate(-10%, -1%) scale(0.82); opacity: 0.34; }
+  100% { transform: translate( -8%,  3%) scale(0.84); opacity: 0.30; }
 }
 
 .icon-anim {
   position: relative;
   border-radius: 12px;
   overflow: hidden;
-  animation: aurora-glow  7.3s ease-in-out infinite,
-             icon-breathe  5.3s ease-in-out infinite;
+  animation: wave-glow   8.1s ease-in-out infinite,
+             wave-drift  13.7s ease-in-out infinite;
   flex-shrink: 0;
   cursor: default;
 }
 
-/* 光玉 A：淡い黄金〜ピンクのオーブ。右中央に浮遊 */
+/* 大きな水紋オーブ：青みがかった水面の光 */
 .icon-anim::after {
   content: '';
   position: absolute;
-  left: 15%;
-  top: 10%;
-  width: 75%;
-  height: 75%;
+  left: 12%;
+  top: 8%;
+  width: 70%;
+  height: 70%;
   border-radius: 50%;
   background: radial-gradient(
-    ellipse at 48% 52%,
-    rgba(255, 245, 210, 0.38) 0%,
-    rgba(255, 225, 185, 0.20) 32%,
-    rgba(255, 205, 225, 0.10) 58%,
+    ellipse at 45% 52%,
+    rgba(210, 248, 240, 0.30) 0%,
+    rgba(170, 232, 222, 0.14) 36%,
+    rgba(145, 218, 212, 0.06) 64%,
     transparent 100%
   );
-  animation: orb-drift-a 6.7s ease-in-out infinite;
+  animation: orb-wave-a 11.3s ease-in-out infinite;
   pointer-events: none;
   mix-blend-mode: screen;
 }
 
-/* 光玉 B：淡い青みがかったオーブ。左上に浮遊 */
+/* 小さな水紋オーブ：淡い水色 */
 .icon-anim::before {
   content: '';
   position: absolute;
-  left: -8%;
-  top: 2%;
-  width: 58%;
-  height: 58%;
+  left: -6%;
+  top: 3%;
+  width: 52%;
+  height: 52%;
   border-radius: 50%;
   background: radial-gradient(
-    ellipse at 50% 50%,
-    rgba(210, 235, 255, 0.32) 0%,
-    rgba(185, 215, 255, 0.16) 38%,
-    rgba(205, 225, 255, 0.07) 64%,
+    ellipse at 52% 48%,
+    rgba(195, 238, 252, 0.26) 0%,
+    rgba(162, 216, 246, 0.12) 42%,
+    rgba(140, 202, 238, 0.05) 70%,
     transparent 100%
   );
-  animation: orb-drift-b 8.3s ease-in-out infinite;
+  animation: orb-wave-b 7.9s ease-in-out infinite;
   pointer-events: none;
   mix-blend-mode: screen;
 }
 
-/* ホバー：光がやさしく明るくなり、動きがゆるやかに速まる */
+/* ホバー：波が少しだけ速まる（打ち寄せる感じ） */
 .icon-anim:hover {
-  animation-duration: 3.6s, 2.7s;
+  animation-duration: 5.0s, 8.5s;
 }
-.icon-anim:hover::after  { animation-duration: 3.3s; }
-.icon-anim:hover::before { animation-duration: 4.1s; }
+.icon-anim:hover::after  { animation-duration: 7.0s; }
+.icon-anim:hover::before { animation-duration: 4.9s; }
 
 * { box-sizing: border-box; }
 
