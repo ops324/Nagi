@@ -77,7 +77,8 @@ export default function EmotionCalendar({ entries, onNavigateToEntry }: Props) {
     dominant: e.dominant,
   }));
 
-  const handleChartClick = (data: { activePayload?: { payload: { id: string } }[] }) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const handleChartClick = (data: any) => {
     if (data?.activePayload?.[0]) {
       const id = data.activePayload[0].payload.id;
       const entry = entries.find((e) => e.id === id);
