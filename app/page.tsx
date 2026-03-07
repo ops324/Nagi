@@ -287,6 +287,12 @@ export default function Home() {
                 </a>
               )}
               {userEmail && (
+                <a href="/account" className="text-xs tracking-widest px-3 py-1.5 rounded-full"
+                  style={{ backgroundColor: "var(--bg)", border: "1px solid var(--border)", color: "var(--text-muted)" }}>
+                  設定
+                </a>
+              )}
+              {userEmail && (
                 <form action={logout}>
                   <button type="submit" className="text-xs tracking-widest px-3 py-1.5 rounded-full"
                     style={{ backgroundColor: "var(--bg)", border: "1px solid var(--border)", color: "var(--text-muted)" }}>

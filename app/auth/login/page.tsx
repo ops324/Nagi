@@ -46,8 +46,6 @@ export default function LoginPage() {
 
         {/* フォーム */}
         <div className="rounded-3xl p-8" style={{ backgroundColor: "var(--bg-card)", border: "1px solid var(--border)" }}>
-          <p className="text-xs tracking-widest mb-6" style={{ color: "var(--text-muted)" }}>ログイン</p>
-
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-xs tracking-widest mb-2" style={{ color: "var(--text-muted)" }}>
