@@ -8,76 +8,85 @@ import { logout } from "./auth/actions";
 
 const SEED_ENTRIES: Entry[] = [
   {
-    id: "seed-8",
-    content: "少し前の自分と今の自分を比べると、確かに変わっている。2週間前は何も感じなかったのに、今日は外の空気が気持ちいいと思えた。誰かに感謝というよりも、諦めなかった自分に少しだけ感謝したい気持ちがある。記録してきてよかった。",
-    comment: "日々の積み重ねを振り返ったとき、確かに何かが変わっていることに気づけた。感謝というのは、過去の自分と今の自分の間にある距離を、静かに認める行為かもしれない。この変化の中で、最も大切だと感じているものは何ですか。",
-    emotions: [{ label: "感謝", score: 0.7 }, { label: "充実", score: 0.5 }, { label: "喜び", score: 0.4 }],
+    id: "u-seed-9",
+    content: "朝起きたとき、今日が楽しみだと思った。特別なことがあるわけでもないのに。感情に振り回されていた自分が、少しずつ「こういう感情もあるんだな」と眺められるようになってきた。主役として感じながら、同時に観客として眺めている自分がいる。その両方があることが、豊かさなのかもしれない。",
+    comment: "演じながら眺めている——その両方を同時に持てるようになった日。「豊かさ」という言葉が自然に出てきたのは、何かが静かに積み重なってきたからかもしれない。これからの物語の中で、あなたはどんな一場面を大切にしたいですか。",
+    emotions: [{ label: "感謝", score: 0.8 }, { label: "充実", score: 0.6 }, { label: "喜び", score: 0.4 }],
     dominant: "感謝",
-    energy: 8,
-    createdAt: "2026-03-05T12:00:00+09:00",
+    energy: 9,
+    createdAt: "2026-03-07T08:30:00+09:00",
   },
   {
-    id: "seed-7",
-    content: "仕事でずっと詰まっていた問題が解決した。チームで相談してもわからなくて、昨日の夜ひとりでもう一度ゼロから考え直したら、今日の朝に急にわかった。解決した後、自分に「よくやった」と言えた。口には出してないけど、ちゃんと言えた気がする。",
-    comment: "仕事の中で自分の力を信じて動いて、最後に自分自身に言葉をかけられた——そういう日があったのですね。問題を解いた後の感覚と、自分に言葉をかけた後の感覚は、同じでしたか、それとも違いましたか。",
-    emotions: [{ label: "喜び", score: 0.7 }, { label: "充実", score: 0.5 }, { label: "安心", score: 0.3 }],
-    dominant: "喜び",
-    energy: 8,
-    createdAt: "2026-03-03T13:00:00+09:00",
-  },
-  {
-    id: "seed-6",
-    content: "今朝、起きたとき身体が軽かった。最近はベッドから出るのも重かったのに、なんか違った。何かが変わったわけじゃないけど、焦りが少しほどけてきた感じ。あわてなくていいと思えた。",
-    comment: "朝起きたとき、身体が少し軽かった。その感覚は、何かが少しずつ変わってきているサインかもしれない。焦りがほどけていくとき、あなたの中では何が変化しているのでしょう。その「軽さ」は、どんな瞬間に宿りましたか。",
-    emotions: [{ label: "希望", score: 0.6 }, { label: "安心", score: 0.5 }, { label: "穏やか", score: 0.3 }],
+    id: "u-seed-8",
+    content: "散歩しながら、ふと思った。「自分はこういう人間だ」とずっと信じていたことが、本当にそうなのだろうか。もしかしたら、ずっと同じフィルターを通して世界を見ていただけで、そのフィルターを外すと全然違う景色が見えるかもしれない。怖いけど、それより可能性の方が大きく感じた。",
+    comment: "「フィルターを外すと違う景色が見えるかもしれない」——そう感じた瞬間、怖さより可能性の方が大きかった。長い間かけていたと感じるフィルターの中で、最も外してみたいものは何ですか。",
+    emotions: [{ label: "希望", score: 0.7 }, { label: "充実", score: 0.5 }, { label: "感謝", score: 0.3 }],
     dominant: "希望",
-    energy: 7,
-    createdAt: "2026-03-01T07:30:00+09:00",
+    energy: 8,
+    createdAt: "2026-03-06T16:00:00+09:00",
   },
   {
-    id: "seed-5",
-    content: "大学の友人とカフェで3時間くらい話した。近況を話していたら、向こうに「あなたっていつもそういうときどうするの」と聞かれて、答えながら自分のことをはっきり理解できた気がした。誰かに語るって、自分を知ることなんだな。",
-    comment: "誰かと話す中で、自分の輪郭がはっきりしてくる瞬間がある。今日の友人との会話は、鏡のような役割を果たしてくれたのかもしれない。会話の中で出てきた言葉の中に、「これが自分だ」と感じたものはありましたか。",
-    emotions: [{ label: "充実", score: 0.7 }, { label: "感謝", score: 0.5 }, { label: "安心", score: 0.3 }],
+    id: "u-seed-7",
+    content: "変わろうとすることは、思った以上にエネルギーがいる。疲れた日は古い考え方に引っ張られる。意志を持って動こうとしているのに、身体が追いついてこない感じがある。それでも少し前の自分と今の自分を比べると、確かに何かが違う。結果よりも、変わろうとしている自分を見ていたい。",
+    comment: "変化の途中にある疲れの中で、「変わろうとしている自分を見ていたい」と書けた。その言葉はスクリーンの出来事を評価するのではなく、物語そのものを見守る目線かもしれない。今「確かに違う」と感じる部分は、どこですか。",
+    emotions: [{ label: "疲れ", score: 0.5 }, { label: "希望", score: 0.4 }, { label: "穏やか", score: 0.3 }],
+    dominant: "疲れ",
+    energy: 6,
+    createdAt: "2026-03-05T21:30:00+09:00",
+  },
+  {
+    id: "u-seed-6",
+    content: "今日、仕事で大きな選択をした。「安全な道」と「自分がやりたい道」。以前なら迷わず安全な方を選んでいた。でも今日は「これは自分の意志か、それとも恐れからか」を一度確認してから、やりたい道を選んだ。不安はあったけど、選んだ後の清々しさは本物だった。",
+    comment: "「恐れからか、意志からか」を確認してから選んだ——その一歩は、自分が自分の人生の選択者であることを実感した瞬間かもしれない。選んだ後の「清々しさ」は、どんな感覚として身体にありましたか。",
+    emotions: [{ label: "充実", score: 0.6 }, { label: "希望", score: 0.5 }, { label: "安心", score: 0.3 }],
     dominant: "充実",
     energy: 7,
-    createdAt: "2026-02-28T15:30:00+09:00",
+    createdAt: "2026-03-04T19:00:00+09:00",
   },
   {
-    id: "seed-4",
-    content: "夕飯を一から作った。最近はコンビニやデリバリーばかりだったので久しぶり。野菜を切っているとき、頭が空っぽになって気持ちよかった。出来上がりよりも、作っている時間の方が好きかもしれないと気づいた。結果じゃなくて過程が好きなんだな、と。",
-    comment: "料理をしながら「過程そのものが好き」という感覚に気づいた日。手を動かすことで、頭の中が整理されていくような感覚はありましたか。「結果より過程」——それは他のどんな場面にも当てはまりそうですか。",
-    emotions: [{ label: "充実", score: 0.6 }, { label: "穏やか", score: 0.4 }, { label: "安心", score: 0.3 }],
-    dominant: "充実",
-    energy: 6,
-    createdAt: "2026-02-26T19:30:00+09:00",
-  },
-  {
-    id: "seed-3",
-    content: "積んでいた本をやっと読み始めた。哲学系の本で、正直難しかったけど、途中で「これまで自分が聞いていた問いそのものが間違っていたかもしれない」という一節に引っかかった。何かが少し変わった気がする。問いの立て方が変わると、見える景色も変わるんだろうか。",
-    comment: "読んでいた本が、何かのスイッチを押したのかもしれない。「問いが変わった」という感覚は、物の見え方そのものが変わる瞬間に近い。今、あなたの中で変化した「問いの立て方」を言葉にすると、どんなものになりますか。",
-    emotions: [{ label: "希望", score: 0.6 }, { label: "混乱", score: 0.3 }, { label: "穏やか", score: 0.3 }],
-    dominant: "希望",
-    energy: 6,
-    createdAt: "2026-02-24T21:00:00+09:00",
-  },
-  {
-    id: "seed-2",
-    content: "午後から少し外を歩いた。最近ずっと家にいたから、久しぶりに空気を吸った気がした。川沿いの道で、水面がきらきらしていて、ぼーっと眺めていたら気がついたら30分経っていた。特別なことは何もないけど、少しだけ息ができた感じがした。",
-    comment: "外に出て歩いてみたら、少し呼吸が楽になった。身体はときどき、言葉より先に「今は外が必要だ」と知っているのかもしれない。散歩の途中で目に留まったものや感じた空気感の中に、何か小さな発見はありましたか。",
-    emotions: [{ label: "穏やか", score: 0.6 }, { label: "安心", score: 0.4 }],
+    id: "u-seed-5",
+    content: "久しぶりに昔の友人と会った。その場の空気に引っ張られて、自分の意見をうまく言えなかった。昔のパターンに戻ってしまった感じがして、帰り道に落ち込んだ。でもふと気がついた——「また演じてしまった」とわかっている自分がいること自体、少し前の自分とは違う。",
+    comment: "「また演じてしまった」と気づいた自分がいた——以前は演じていることにさえ気づかなかったかもしれない。その観察する目は、いつ頃から生まれてきたと感じますか。",
+    emotions: [{ label: "穏やか", score: 0.5 }, { label: "不安", score: 0.3 }, { label: "安心", score: 0.3 }],
     dominant: "穏やか",
     energy: 5,
-    createdAt: "2026-02-22T15:00:00+09:00",
+    createdAt: "2026-03-03T20:00:00+09:00",
   },
   {
-    id: "seed-1",
-    content: "最近、何をしていても気持ちが乗らない。仕事も、食事も、全部義務みたいな感覚で済ませている。好きなものを見ても何も感じなくて、毎日がただ過ぎていく。これがずっと続くのかと思うと少し怖い。",
-    comment: "気力も意欲もどこかへ行ってしまったような日々。そういう感覚の中でも、今日ここに言葉を残したことがある。この「何もかも遠い」という感じは、身体の疲れと地続きになっていますか、それとも別の何かでしょうか。",
-    emotions: [{ label: "疲れ", score: 0.7 }, { label: "孤独", score: 0.4 }, { label: "不安", score: 0.3 }],
+    id: "u-seed-4",
+    content: "友人に「本当はどうしたいの？」と聞かれて、すぐに答えられなかった。話しながら気づいたことがある。ずっと「こうすべき」「こう見られたい」という基準で動いていた。それは誰かから刷り込まれた判断基準で、自分のものではなかったかもしれない。怖いけど、気づけてよかったと思う。",
+    comment: "「誰の判断基準で動いていたか」に気づいた——そこには怖さも伴う。その気づきを「よかった」と受け取れているのは、どんな部分からでしょうか。自分の基準を持つとしたら、まず何を大切にしたいですか。",
+    emotions: [{ label: "希望", score: 0.6 }, { label: "穏やか", score: 0.4 }, { label: "不安", score: 0.3 }],
+    dominant: "希望",
+    energy: 6,
+    createdAt: "2026-03-02T15:30:00+09:00",
+  },
+  {
+    id: "u-seed-3",
+    content: "自分の価値観とは何だろうとずっと考えている。仕事でも人間関係でも判断を迫られるたびに何かに迷う。それが親から受け継いだ考え方なのか、社会の空気を読んでいるだけなのか、本当に自分が大切にしていることなのか。ぐるぐるしてきた。でも問い続けることは止めたくない。",
+    comment: "「これは自分の価値観なのか、それとも外から来たものか」——その問いを持てることは、自分の軸を探している証かもしれない。「ぐるぐる」の中に、かすかに「これは違う」と感じる瞬間はありますか。",
+    emotions: [{ label: "混乱", score: 0.6 }, { label: "不安", score: 0.4 }, { label: "穏やか", score: 0.2 }],
+    dominant: "混乱",
+    energy: 4,
+    createdAt: "2026-03-01T22:00:00+09:00",
+  },
+  {
+    id: "u-seed-2",
+    content: "少し落ち着いて自分を観察してみようと思った。いつも感情に引きずられて、嫌なことがあるとそのことばかり考えてしまう。でも今日、少し距離を置いて「今の自分」を眺めてみたら、「あ、また同じパターンだ」と思えた瞬間があった。その瞬間だけ、ふっと楽になった気がした。",
+    comment: "「また同じパターンだ」と気づいた瞬間——それは自分をすこし外から眺める目が生まれた瞬間かもしれない。「ふっと楽になった」という感覚は、何が変わったときに生まれたと感じますか。",
+    emotions: [{ label: "希望", score: 0.5 }, { label: "穏やか", score: 0.4 }, { label: "混乱", score: 0.3 }],
+    dominant: "希望",
+    energy: 5,
+    createdAt: "2026-02-28T20:00:00+09:00",
+  },
+  {
+    id: "u-seed-1",
+    content: "感情がうまく扱えていない。些細なことで苛立ったり、理由もなく落ち込んだり。表では普通にしているつもりだけど、内側はずっとバラバラだ。自分が何を大切にして生きているのか、何のために頑張っているのかもわからなくなってきた。こんな状態がいつまで続くのだろう。",
+    comment: "感情がバラバラに感じられ、価値観の軸が見えない状態。それでも「わからなくなった」と気づいていること自体、何かを探している自分がいるということ。今この感覚の中で、唯一「これだけは本物だ」と感じるものはありますか。",
+    emotions: [{ label: "疲れ", score: 0.7 }, { label: "不安", score: 0.5 }, { label: "混乱", score: 0.4 }],
     dominant: "疲れ",
     energy: 3,
-    createdAt: "2026-02-20T20:30:00+09:00",
+    createdAt: "2026-02-27T21:00:00+09:00",
   },
 ];
 
@@ -106,7 +115,7 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [tab, setTab] = useState<Tab>("journal");
-  const [selectedEntry, setSelectedEntry] = useState<Entry | null>(null);
+  const [highlightedEntryId, setHighlightedEntryId] = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
 
@@ -212,6 +221,23 @@ export default function Home() {
       setLoading(false);
     }
   };
+
+  // カレンダー／グラフから記録タブの該当エントリへナビゲート
+  const navigateToEntry = (entry: Entry) => {
+    setTab("journal");
+    setHighlightedEntryId(entry.id);
+  };
+
+  // ハイライトされたエントリへスクロール（タブ切替後に実行）
+  useEffect(() => {
+    if (!highlightedEntryId) return;
+    const scrollTimer = setTimeout(() => {
+      const el = document.getElementById(`entry-${highlightedEntryId}`);
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 80);
+    const clearTimer = setTimeout(() => setHighlightedEntryId(null), 2800);
+    return () => { clearTimeout(scrollTimer); clearTimeout(clearTimer); };
+  }, [highlightedEntryId]);
 
   const fmtDate = (iso: string) =>
     new Date(iso).toLocaleDateString("ja-JP", {
@@ -323,8 +349,16 @@ export default function Home() {
               <div className="space-y-4">
                 <p className="text-xs tracking-widest px-1" style={{ color: "var(--text-muted)" }}>過去の記録</p>
                 {entries.map((entry) => (
-                  <article key={entry.id} className="rounded-3xl p-6 shadow-sm space-y-4"
-                    style={{ backgroundColor: "var(--bg-card)", border: "1px solid var(--border)" }}>
+                  <article
+                    key={entry.id}
+                    id={`entry-${entry.id}`}
+                    className="rounded-3xl p-6 shadow-sm space-y-4"
+                    style={{
+                      backgroundColor: "var(--bg-card)",
+                      border: `1px solid ${highlightedEntryId === entry.id ? "var(--tab-active)" : "var(--border)"}`,
+                      boxShadow: highlightedEntryId === entry.id ? "0 0 0 3px color-mix(in srgb, var(--tab-active) 20%, transparent)" : "none",
+                      transition: "border-color 0.4s ease, box-shadow 0.4s ease",
+                    }}>
                     <div className="flex items-center">
                       <time className="text-xs" style={{ color: "var(--text-muted)" }}>{fmtDate(entry.createdAt)}</time>
                     </div>
@@ -367,32 +401,8 @@ export default function Home() {
           <>
             <EmotionCalendar
               entries={entries}
-              onSelectEntry={(e) => setSelectedEntry(e)}
+              onNavigateToEntry={navigateToEntry}
             />
-
-            {/* 選択した記録 */}
-            {selectedEntry && (
-              <article className="rounded-3xl p-6 shadow-sm space-y-4"
-                style={{ backgroundColor: "var(--bg-card)", border: "1px solid var(--border)" }}>
-                <div className="flex justify-between items-center">
-                  <time className="text-xs" style={{ color: "var(--text-muted)" }}>{fmtDate(selectedEntry.createdAt)}</time>
-                  <button onClick={() => setSelectedEntry(null)} style={{ color: "var(--text-subtle)", fontSize: 12 }}>✕</button>
-                </div>
-                {selectedEntry.emotions?.length > 0 && (
-                  <div className="h-1 rounded-full w-full"
-                    style={{ background: emotionGradient(selectedEntry.emotions) }} />
-                )}
-                <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: "var(--text-entry)" }}>
-                  {selectedEntry.content}
-                </p>
-                <div className="rounded-2xl p-4" style={{ backgroundColor: "var(--bg-comment)" }}>
-                  <p className="text-xs tracking-widest mb-2" style={{ color: "var(--text-muted)" }}>凪より</p>
-                  <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)", fontStyle: "italic" }}>
-                    {selectedEntry.comment}
-                  </p>
-                </div>
-              </article>
-            )}
 
             {entries.length === 0 && (
               <div className="text-center py-12">

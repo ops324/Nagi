@@ -8,7 +8,7 @@ import { Entry, EMOTION_COLORS } from "../types";
 
 type Props = {
   entries: Entry[];
-  onSelectEntry: (entry: Entry) => void;
+  onNavigateToEntry: (entry: Entry) => void;
 };
 
 const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: { value: number; payload: { date: string; dominant: string } }[] }) => {
@@ -33,7 +33,7 @@ const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: { valu
   return null;
 };
 
-export default function EmotionCalendar({ entries, onSelectEntry }: Props) {
+export default function EmotionCalendar({ entries, onNavigateToEntry }: Props) {
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
@@ -71,10 +71,19 @@ export default function EmotionCalendar({ entries, onSelectEntry }: Props) {
 
   // グラフデータ
   const chartData = [...entries].reverse().slice(-30).map((e) => ({
+    id: e.id,
     date: new Date(e.createdAt).toLocaleDateString("ja-JP", { month: "numeric", day: "numeric" }),
     energy: e.energy ?? 5,
     dominant: e.dominant,
   }));
+
+  const handleChartClick = (data: { activePayload?: { payload: { id: string } }[] }) => {
+    if (data?.activePayload?.[0]) {
+      const id = data.activePayload[0].payload.id;
+      const entry = entries.find((e) => e.id === id);
+      if (entry) onNavigateToEntry(entry);
+    }
+  };
 
   // 感情カラーのグラデーションストップ（横方向）
   const gradientStops = chartData.map((d, i) => ({
@@ -94,7 +103,7 @@ export default function EmotionCalendar({ entries, onSelectEntry }: Props) {
         <p className="text-sm font-light tracking-wide mb-5" style={{ color: textColor }}>最近の心の動き</p>
         {chartData.length > 0 ? (
           <ResponsiveContainer width="100%" height={140}>
-            <AreaChart data={chartData} margin={{ top: 5, right: 5, left: -30, bottom: 0 }}>
+            <AreaChart data={chartData} margin={{ top: 5, right: 5, left: -30, bottom: 0 }} onClick={handleChartClick} style={{ cursor: "pointer" }}>
               <defs>
                 {/* 横方向：感情カラーグラデーション（ライン用） */}
                 <linearGradient id="emotionStroke" x1="0" y1="0" x2="1" y2="0">
@@ -184,7 +193,7 @@ export default function EmotionCalendar({ entries, onSelectEntry }: Props) {
             return (
               <button
                 key={day}
-                onClick={() => entry && onSelectEntry(entry)}
+                onClick={() => entry && onNavigateToEntry(entry)}
                 className="mx-auto w-9 h-9 rounded-full flex items-center justify-center transition-all"
                 style={{
                   backgroundColor: entry ? bgColor : isToday ? "rgba(110, 231, 183, 0.15)" : "transparent",
