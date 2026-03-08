@@ -6,100 +6,6 @@ import { Entry, Emotion, EMOTION_COLORS } from "./types";
 import { createClient } from "@/lib/supabase/client";
 import { logout } from "./auth/actions";
 
-// 今日から n 日前の日付文字列を返す（JST）
-function seedDate(daysAgo: number, time: string): string {
-  const d = new Date();
-  d.setDate(d.getDate() - daysAgo);
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}T${time}+09:00`;
-}
-
-const SEED_ENTRIES: Entry[] = [
-  {
-    id: "u-seed-9",
-    content: "朝起きたとき、今日が楽しみだと思った。特別なことがあるわけでもないのに。感情に振り回されていた自分が、少しずつ「こういう感情もあるんだな」と眺められるようになってきた。主役として感じながら、同時に観客として眺めている自分がいる。その両方があることが、豊かさなのかもしれない。",
-    comment: "演じながら眺めている——その両方を同時に持てるようになった日。「豊かさ」という言葉が自然に出てきたのは、何かが静かに積み重なってきたからかもしれない。これからの物語の中で、あなたはどんな一場面を大切にしたいですか。",
-    emotions: [{ label: "感謝", score: 0.8 }, { label: "充実", score: 0.6 }, { label: "喜び", score: 0.4 }],
-    dominant: "感謝",
-    energy: 9,
-    createdAt: seedDate(0, "08:30:00"),
-  },
-  {
-    id: "u-seed-8",
-    content: "散歩しながら、ふと思った。「自分はこういう人間だ」とずっと信じていたことが、本当にそうなのだろうか。もしかしたら、ずっと同じフィルターを通して世界を見ていただけで、そのフィルターを外すと全然違う景色が見えるかもしれない。怖いけど、それより可能性の方が大きく感じた。",
-    comment: "「フィルターを外すと違う景色が見えるかもしれない」——そう感じた瞬間、怖さより可能性の方が大きかった。長い間かけていたと感じるフィルターの中で、最も外してみたいものは何ですか。",
-    emotions: [{ label: "希望", score: 0.7 }, { label: "充実", score: 0.5 }, { label: "感謝", score: 0.3 }],
-    dominant: "希望",
-    energy: 8,
-    createdAt: seedDate(1, "16:00:00"),
-  },
-  {
-    id: "u-seed-7",
-    content: "変わろうとすることは、思った以上にエネルギーがいる。疲れた日は古い考え方に引っ張られる。意志を持って動こうとしているのに、身体が追いついてこない感じがある。それでも少し前の自分と今の自分を比べると、確かに何かが違う。結果よりも、変わろうとしている自分を見ていたい。",
-    comment: "変化の途中にある疲れの中で、「変わろうとしている自分を見ていたい」と書けた。その言葉はスクリーンの出来事を評価するのではなく、物語そのものを見守る目線かもしれない。今「確かに違う」と感じる部分は、どこですか。",
-    emotions: [{ label: "疲れ", score: 0.5 }, { label: "希望", score: 0.4 }, { label: "穏やか", score: 0.3 }],
-    dominant: "疲れ",
-    energy: 6,
-    createdAt: seedDate(2, "21:30:00"),
-  },
-  {
-    id: "u-seed-6",
-    content: "今日、仕事で大きな選択をした。「安全な道」と「自分がやりたい道」。以前なら迷わず安全な方を選んでいた。でも今日は「これは自分の意志か、それとも恐れからか」を一度確認してから、やりたい道を選んだ。不安はあったけど、選んだ後の清々しさは本物だった。",
-    comment: "「恐れからか、意志からか」を確認してから選んだ——その一歩は、自分が自分の人生の選択者であることを実感した瞬間かもしれない。選んだ後の「清々しさ」は、どんな感覚として身体にありましたか。",
-    emotions: [{ label: "充実", score: 0.6 }, { label: "希望", score: 0.5 }, { label: "安心", score: 0.3 }],
-    dominant: "充実",
-    energy: 7,
-    createdAt: seedDate(3, "19:00:00"),
-  },
-  {
-    id: "u-seed-5",
-    content: "久しぶりに昔の友人と会った。その場の空気に引っ張られて、自分の意見をうまく言えなかった。昔のパターンに戻ってしまった感じがして、帰り道に落ち込んだ。でもふと気がついた——「また演じてしまった」とわかっている自分がいること自体、少し前の自分とは違う。",
-    comment: "「また演じてしまった」と気づいた自分がいた——以前は演じていることにさえ気づかなかったかもしれない。その観察する目は、いつ頃から生まれてきたと感じますか。",
-    emotions: [{ label: "穏やか", score: 0.5 }, { label: "不安", score: 0.3 }, { label: "安心", score: 0.3 }],
-    dominant: "穏やか",
-    energy: 5,
-    createdAt: seedDate(4, "20:00:00"),
-  },
-  {
-    id: "u-seed-4",
-    content: "友人に「本当はどうしたいの？」と聞かれて、すぐに答えられなかった。話しながら気づいたことがある。ずっと「こうすべき」「こう見られたい」という基準で動いていた。それは誰かから刷り込まれた判断基準で、自分のものではなかったかもしれない。怖いけど、気づけてよかったと思う。",
-    comment: "「誰の判断基準で動いていたか」に気づいた——そこには怖さも伴う。その気づきを「よかった」と受け取れているのは、どんな部分からでしょうか。自分の基準を持つとしたら、まず何を大切にしたいですか。",
-    emotions: [{ label: "希望", score: 0.6 }, { label: "穏やか", score: 0.4 }, { label: "不安", score: 0.3 }],
-    dominant: "希望",
-    energy: 6,
-    createdAt: seedDate(5, "15:30:00"),
-  },
-  {
-    id: "u-seed-3",
-    content: "自分の価値観とは何だろうとずっと考えている。仕事でも人間関係でも判断を迫られるたびに何かに迷う。それが親から受け継いだ考え方なのか、社会の空気を読んでいるだけなのか、本当に自分が大切にしていることなのか。ぐるぐるしてきた。でも問い続けることは止めたくない。",
-    comment: "「これは自分の価値観なのか、それとも外から来たものか」——その問いを持てることは、自分の軸を探している証かもしれない。「ぐるぐる」の中に、かすかに「これは違う」と感じる瞬間はありますか。",
-    emotions: [{ label: "混乱", score: 0.6 }, { label: "不安", score: 0.4 }, { label: "穏やか", score: 0.2 }],
-    dominant: "混乱",
-    energy: 4,
-    createdAt: seedDate(6, "22:00:00"),
-  },
-  {
-    id: "u-seed-2",
-    content: "少し落ち着いて自分を観察してみようと思った。いつも感情に引きずられて、嫌なことがあるとそのことばかり考えてしまう。でも今日、少し距離を置いて「今の自分」を眺めてみたら、「あ、また同じパターンだ」と思えた瞬間があった。その瞬間だけ、ふっと楽になった気がした。",
-    comment: "「また同じパターンだ」と気づいた瞬間——それは自分をすこし外から眺める目が生まれた瞬間かもしれない。「ふっと楽になった」という感覚は、何が変わったときに生まれたと感じますか。",
-    emotions: [{ label: "希望", score: 0.5 }, { label: "穏やか", score: 0.4 }, { label: "混乱", score: 0.3 }],
-    dominant: "希望",
-    energy: 5,
-    createdAt: seedDate(7, "20:00:00"),
-  },
-  {
-    id: "u-seed-1",
-    content: "感情がうまく扱えていない。些細なことで苛立ったり、理由もなく落ち込んだり。表では普通にしているつもりだけど、内側はずっとバラバラだ。自分が何を大切にして生きているのか、何のために頑張っているのかもわからなくなってきた。こんな状態がいつまで続くのだろう。",
-    comment: "感情がバラバラに感じられ、価値観の軸が見えない状態。それでも「わからなくなった」と気づいていること自体、何かを探している自分がいるということ。今この感覚の中で、唯一「これだけは本物だ」と感じるものはありますか。",
-    emotions: [{ label: "疲れ", score: 0.7 }, { label: "不安", score: 0.5 }, { label: "混乱", score: 0.4 }],
-    dominant: "疲れ",
-    energy: 3,
-    createdAt: seedDate(8, "21:00:00"),
-  },
-];
-
 const emotionGradient = (emotions: Emotion[]) => {
   if (!emotions?.length) return "transparent";
   const total = emotions.reduce((s, e) => s + e.score, 0) || 1;
@@ -158,22 +64,6 @@ export default function Home() {
       if (data && data.length > 0) {
         // Supabase は snake_case (created_at) で返すため camelCase (createdAt) にマップ
         setEntries(data.map(e => ({ ...e, createdAt: e.created_at })) as Entry[]);
-      } else {
-        // 初回ログイン時：SEEDデータをDBに保存
-        const { data: { user: u } } = await supabase.auth.getUser();
-        if (!u) return;
-        const seeded = SEED_ENTRIES.map(e => ({
-          id: e.id,
-          user_id: u.id,
-          content: e.content,
-          comment: e.comment,
-          emotions: e.emotions,
-          dominant: e.dominant,
-          energy: e.energy,
-          created_at: e.createdAt,  // camelCase → snake_case
-        }));
-        await supabase.from("entries").insert(seeded);
-        setEntries(SEED_ENTRIES);
       }
     };
 
