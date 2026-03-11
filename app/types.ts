@@ -11,6 +11,7 @@ export type Entry = {
   dominant: string;
   energy: number;
   createdAt: string;
+  insightLevel?: "deep" | "moderate" | "gentle";
 };
 
 // 感情の価値（valence）×彩度で色を設計するパレット

@@ -63,7 +63,11 @@ export default function Home() {
 
       if (data && data.length > 0) {
         // Supabase は snake_case (created_at) で返すため camelCase (createdAt) にマップ
-        setEntries(data.map(e => ({ ...e, createdAt: e.created_at })) as Entry[]);
+        setEntries(data.map(e => ({
+          ...e,
+          createdAt:    e.created_at,
+          insightLevel: e.insight_level,
+        })) as Entry[]);
       }
     };
 
@@ -106,22 +110,24 @@ export default function Home() {
       const entry: Entry = {
         id: Date.now().toString(),
         content,
-        comment:  data.comment,
-        emotions: data.emotions || [],
-        dominant: data.dominant || "穏やか",
-        energy:   data.energy   || 5,
-        createdAt: new Date().toISOString(),
+        comment:      data.comment,
+        emotions:     data.emotions || [],
+        dominant:     data.dominant || "穏やか",
+        energy:       data.energy   || 5,
+        createdAt:    new Date().toISOString(),
+        insightLevel: data.insightLevel || "moderate",
       };
 
       await supabase.from("entries").insert({
-        id:         entry.id,
-        user_id:    user.id,
-        content:    entry.content,
-        comment:    entry.comment,
-        emotions:   entry.emotions,
-        dominant:   entry.dominant,
-        energy:     entry.energy,
-        created_at: entry.createdAt,  // camelCase → snake_case
+        id:            entry.id,
+        user_id:       user.id,
+        content:       entry.content,
+        comment:       entry.comment,
+        emotions:      entry.emotions,
+        dominant:      entry.dominant,
+        energy:        entry.energy,
+        created_at:    entry.createdAt,    // camelCase → snake_case
+        insight_level: entry.insightLevel, // camelCase → snake_case
       });
       setEntries([entry, ...entries]);
       setContent("");
@@ -290,7 +296,10 @@ export default function Home() {
                     </p>
 
                     {/* 凪のコメント */}
-                    <div className="rounded-2xl p-4" style={{ backgroundColor: "var(--bg-comment)" }}>
+                    <div className="rounded-2xl p-4" style={{
+                      backgroundColor: "var(--bg-comment)",
+                      borderLeft: entry.insightLevel === "deep" ? "2px solid var(--tab-active)" : undefined,
+                    }}>
                       <p className="text-xs tracking-widest mb-2" style={{ color: "var(--text-muted)" }}>凪より</p>
                       <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)", fontStyle: "italic" }}>
                         {entry.comment}

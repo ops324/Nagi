@@ -20,8 +20,12 @@ create table if not exists public.entries (
   emotions jsonb not null default '[]',
   dominant text not null default '穏やか',
   energy integer not null default 5,
-  created_at timestamptz not null
+  created_at timestamptz not null,
+  insight_level text default 'moderate'  -- "deep" | "moderate" | "gentle"
 );
+
+-- insight_level カラム追加（既存DBへの適用）
+alter table public.entries add column if not exists insight_level text default 'moderate';
 
 -- 3. RLS（Row Level Security）有効化
 alter table public.profiles enable row level security;
