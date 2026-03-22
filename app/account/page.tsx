@@ -67,8 +67,12 @@ export default function AccountPage() {
   // ── パスワード変更 ──────────────────────────────────
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (newPassword.length < 6) {
-      setPasswordMsg({ type: "error", text: "パスワードは6文字以上で入力してください" });
+    if (newPassword.length < 8) {
+      setPasswordMsg({ type: "error", text: "パスワードは8文字以上で入力してください" });
+      return;
+    }
+    if (!/[A-Za-z]/.test(newPassword) || !/[0-9]/.test(newPassword)) {
+      setPasswordMsg({ type: "error", text: "英字と数字の両方を含めてください" });
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -200,7 +204,7 @@ export default function AccountPage() {
                 type="password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="6文字以上"
+                placeholder="8文字以上（英字+数字）"
                 className="w-full px-4 py-3 rounded-2xl text-sm outline-none"
                 style={{
                   backgroundColor: "var(--bg)",

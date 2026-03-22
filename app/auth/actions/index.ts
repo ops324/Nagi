@@ -29,9 +29,6 @@ export async function signup(formData: FormData) {
   const { error } = await supabase.auth.signUp({ email, password });
 
   if (error) {
-    if (error.message.includes("already registered")) {
-      return { error: "このメールアドレスはすでに登録されています" };
-    }
     return { error: "登録に失敗しました。もう一度お試しください" };
   }
 

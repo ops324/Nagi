@@ -107,3 +107,77 @@ from public.entries,
   jsonb_array_elements(emotions) as em
 group by em->>'label'
 order by count desc;
+
+-- 11. レート制限テーブル（分散レート制限用）
+create table if not exists public.rate_limits (
+  key text primary key,
+  count integer not null default 1,
+  window_start timestamptz not null default now()
+);
+
+-- RLSを無効化（サービスロールキーからのみアクセスするため）
+-- ※ このテーブルはAPIルートからcreateAdminClientで操作する
+alter table public.rate_limits enable row level security;
+
+-- 12. レート制限チェック関数（アトミック操作）
+create or replace function public.check_rate_limit(
+  p_key text,
+  p_limit integer,
+  p_window_seconds integer
+)
+returns jsonb as $$
+declare
+  v_now timestamptz := now();
+  v_record record;
+  v_window_start timestamptz;
+  v_count integer;
+  v_success boolean;
+  v_remaining integer;
+  v_reset_at timestamptz;
+begin
+  -- 既存レコードを取得（行ロック）
+  select * into v_record from public.rate_limits where key = p_key for update;
+
+  if v_record is null then
+    -- 新規: レコード作成
+    v_window_start := v_now;
+    v_count := 1;
+    insert into public.rate_limits (key, count, window_start)
+    values (p_key, 1, v_now);
+    v_success := true;
+    v_remaining := p_limit - 1;
+    v_reset_at := v_now + (p_window_seconds || ' seconds')::interval;
+  elsif v_now > v_record.window_start + (p_window_seconds || ' seconds')::interval then
+    -- ウィンドウ期限切れ: リセット
+    update public.rate_limits set count = 1, window_start = v_now where key = p_key;
+    v_success := true;
+    v_remaining := p_limit - 1;
+    v_reset_at := v_now + (p_window_seconds || ' seconds')::interval;
+  elsif v_record.count >= p_limit then
+    -- 制限超過
+    v_success := false;
+    v_remaining := 0;
+    v_reset_at := v_record.window_start + (p_window_seconds || ' seconds')::interval;
+  else
+    -- カウント増加
+    update public.rate_limits set count = v_record.count + 1 where key = p_key;
+    v_success := true;
+    v_remaining := p_limit - (v_record.count + 1);
+    v_reset_at := v_record.window_start + (p_window_seconds || ' seconds')::interval;
+  end if;
+
+  return jsonb_build_object(
+    'success', v_success,
+    'remaining', v_remaining,
+    'reset_at', extract(epoch from v_reset_at) * 1000
+  );
+end;
+$$ language plpgsql security definer;
+
+-- 13. 古いレート制限レコードを掃除する関数
+create or replace function public.cleanup_rate_limits()
+returns void as $$
+begin
+  delete from public.rate_limits where window_start < now() - interval '2 hours';
+end;
+$$ language plpgsql security definer;

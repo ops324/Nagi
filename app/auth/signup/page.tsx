@@ -17,8 +17,14 @@ export default function SignupPage() {
     setLoading(true);
     setError("");
 
-    if (password.length < 6) {
-      setError("パスワードは6文字以上で設定してください");
+    if (password.length < 8) {
+      setError("パスワードは8文字以上で設定してください");
+      setLoading(false);
+      return;
+    }
+
+    if (!/[A-Za-z]/.test(password) || !/[0-9]/.test(password)) {
+      setError("英字と数字の両方を含めてください");
       setLoading(false);
       return;
     }
@@ -27,11 +33,7 @@ export default function SignupPage() {
     const { error } = await supabase.auth.signUp({ email, password });
 
     if (error) {
-      if (error.message.includes("already registered")) {
-        setError("このメールアドレスはすでに登録されています");
-      } else {
-        setError("登録に失敗しました。もう一度お試しください");
-      }
+      setError("登録に失敗しました。もう一度お試しください");
       setLoading(false);
       return;
     }
@@ -75,7 +77,7 @@ export default function SignupPage() {
 
             <div>
               <label className="block text-xs tracking-widest mb-2" style={{ color: "var(--text-muted)" }}>
-                パスワード（6文字以上）
+                パスワード（8文字以上・英字+数字）
               </label>
               <input
                 type="password"
