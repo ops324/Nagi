@@ -26,7 +26,7 @@ Nagi/
 │   ├── 仕様書.md
 │   └── supabase-setup.sql
 ├── .claude/rules/          # Claudeコーディング規約（本ディレクトリ）
-└── proxy.ts                # 認証ガード（Next.js middleware相当）
+└── proxy.ts                # 認証ガード（Next.js proxy）
 ```
 
 ## ファイル命名規則

@@ -1,13 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { rateLimit } from "@/lib/rate-limit";
-import { validateOrigin } from "@/lib/origin-check";
+import { validateOrigin, validateCsrf } from "@/lib/origin-check";
 
 export async function DELETE(request: NextRequest) {
   try {
-    // Origin検証（CSRF対策）
+    // Origin検証 + CSRF カスタムヘッダー検証
     const originError = validateOrigin(request);
     if (originError) return originError;
+    const csrfError = validateCsrf(request);
+    if (csrfError) return csrfError;
 
     // 認証済みユーザーを確認
     const supabase = await createClient();
@@ -18,11 +20,16 @@ export async function DELETE(request: NextRequest) {
     }
 
     // レート制限（1ユーザー 3回/時間 — 削除は頻繁に呼ばれるべきでない）
-    const { success } = await rateLimit(`delete:${user.id}`, 3, 60 * 60 * 1000);
+    const { success, resetAt } = await rateLimit(`delete:${user.id}`, 3, 60 * 60 * 1000);
     if (!success) {
       return NextResponse.json(
         { error: "リクエスト回数の上限に達しました" },
-        { status: 429 }
+        {
+          status: 429,
+          headers: {
+            "Retry-After": String(Math.ceil((resetAt - Date.now()) / 1000)),
+          },
+        }
       );
     }
 

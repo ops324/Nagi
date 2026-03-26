@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
 
 ## 認証ガード
 
-`proxy.ts`（Next.js middleware 相当）が全ルートを保護：
+`proxy.ts`（Next.js middleware）が全ルートを保護：
 
 - 未認証 → `/auth/login` にリダイレクト
 - 認証済みで `/auth/*` アクセス → `/` にリダイレクト

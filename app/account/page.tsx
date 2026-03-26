@@ -103,7 +103,10 @@ export default function AccountPage() {
     setDeleteLoading(true);
     setDeleteMsg(null);
 
-    const res = await fetch("/api/account/delete", { method: "DELETE" });
+    const res = await fetch("/api/account/delete", {
+      method: "DELETE",
+      headers: { "X-Requested-With": "NagiApp" },
+    });
 
     if (!res.ok) {
       setDeleteMsg({ type: "error", text: "削除に失敗しました。もう一度お試しください" });
