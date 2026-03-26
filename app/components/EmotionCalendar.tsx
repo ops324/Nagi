@@ -50,15 +50,40 @@ export default function EmotionCalendar({ entries, onNavigateToEntry }: Props) {
   const firstDay = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
 
-  const entriesByDate: Record<string, Entry> = {};
+  // 1日に複数エントリがある場合、全エントリの感情を集約して代表色を算出
+  const entriesGroupedByDate: Record<string, Entry[]> = {};
   entries.forEach((entry) => {
     const d = new Date(entry.createdAt);
     if (d.getFullYear() === year && d.getMonth() === month) {
       const key = d.getDate().toString();
-      if (!entriesByDate[key] || new Date(entry.createdAt) > new Date(entriesByDate[key].createdAt)) {
-        entriesByDate[key] = entry;
-      }
+      if (!entriesGroupedByDate[key]) entriesGroupedByDate[key] = [];
+      entriesGroupedByDate[key].push(entry);
     }
+  });
+
+  // 日ごとの代表感情を算出（全エントリの感情スコアを合算し、最高スコアのラベルを代表とする）
+  const dailyDominant: Record<string, string> = {};
+  const dailyFirstEntry: Record<string, Entry> = {}; // ナビゲーション用（最新エントリ）
+  Object.keys(entriesGroupedByDate).forEach((key) => {
+    const dayEntries = entriesGroupedByDate[key];
+    // 最新エントリをナビゲーション用に保持
+    dailyFirstEntry[key] = dayEntries.reduce((latest, e) =>
+      new Date(e.createdAt) > new Date(latest.createdAt) ? e : latest
+    );
+    // 全エントリの感情スコアを合算
+    const scoreMap: Record<string, number> = {};
+    dayEntries.forEach((entry) => {
+      (entry.emotions || []).forEach((em) => {
+        scoreMap[em.label] = (scoreMap[em.label] || 0) + em.score;
+      });
+    });
+    // 最高スコアの感情ラベルを代表とする
+    let maxLabel = dayEntries[0]?.dominant || "穏やか";
+    let maxScore = 0;
+    Object.entries(scoreMap).forEach(([label, score]) => {
+      if (score > maxScore) { maxScore = score; maxLabel = label; }
+    });
+    dailyDominant[key] = maxLabel;
   });
 
   const prevMonth = () => { if (month === 0) { setMonth(11); setYear(y => y - 1); } else setMonth(m => m - 1); };
@@ -69,13 +94,37 @@ export default function EmotionCalendar({ entries, onNavigateToEntry }: Props) {
   for (let i = 0; i < firstDay; i++) cells.push(null);
   for (let d = 1; d <= daysInMonth; d++) cells.push(d);
 
-  // グラフデータ
-  const chartData = [...entries].reverse().slice(-30).map((e) => ({
-    id: e.id,
-    date: new Date(e.createdAt).toLocaleDateString("ja-JP", { month: "numeric", day: "numeric" }),
-    energy: e.energy ?? 5,
-    dominant: e.dominant,
-  }));
+  // グラフデータ：1日複数エントリがある場合はエネルギーを平均、感情を総合して表示
+  const chartData = (() => {
+    const byDate: Record<string, { entries: Entry[]; dateStr: string }> = {};
+    [...entries].reverse().forEach((e) => {
+      const dateStr = new Date(e.createdAt).toLocaleDateString("ja-JP", { month: "numeric", day: "numeric" });
+      const dateKey = new Date(e.createdAt).toISOString().slice(0, 10);
+      if (!byDate[dateKey]) byDate[dateKey] = { entries: [], dateStr };
+      byDate[dateKey].entries.push(e);
+    });
+    return Object.values(byDate).slice(-30).map(({ entries: dayEntries, dateStr }) => {
+      const avgEnergy = Math.round(dayEntries.reduce((s, e) => s + (e.energy ?? 5), 0) / dayEntries.length);
+      // 感情スコアを合算して代表感情を決定
+      const scoreMap: Record<string, number> = {};
+      dayEntries.forEach((e) => {
+        (e.emotions || []).forEach((em) => {
+          scoreMap[em.label] = (scoreMap[em.label] || 0) + em.score;
+        });
+      });
+      let dominant = dayEntries[0]?.dominant || "穏やか";
+      let maxScore = 0;
+      Object.entries(scoreMap).forEach(([label, score]) => {
+        if (score > maxScore) { maxScore = score; dominant = label; }
+      });
+      return {
+        id: dayEntries[dayEntries.length - 1].id, // 最新エントリのIDをナビゲーション用に使用
+        date: dateStr,
+        energy: avgEnergy,
+        dominant,
+      };
+    });
+  })();
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleChartClick = (data: any) => {
@@ -184,32 +233,35 @@ export default function EmotionCalendar({ entries, onNavigateToEntry }: Props) {
         <div className="grid grid-cols-7 gap-y-2">
           {cells.map((day, idx) => {
             if (!day) return <div key={`e-${idx}`} />;
-            const entry = entriesByDate[day.toString()];
+            const dayKey = day.toString();
+            const hasEntries = !!entriesGroupedByDate[dayKey];
+            const dominant = dailyDominant[dayKey];
+            const navEntry = dailyFirstEntry[dayKey];
             const isToday =
               day === today.getDate() &&
               month === today.getMonth() &&
               year === today.getFullYear();
-            const bgColor = entry ? (EMOTION_COLORS[entry.dominant] || "#d1fae5") : "transparent";
+            const bgColor = hasEntries ? (EMOTION_COLORS[dominant] || "#d1fae5") : "transparent";
 
             return (
               <button
                 key={day}
-                onClick={() => entry && onNavigateToEntry(entry)}
+                onClick={() => navEntry && onNavigateToEntry(navEntry)}
                 className="mx-auto w-9 h-9 rounded-full flex items-center justify-center transition-all"
                 style={{
-                  backgroundColor: entry ? bgColor : isToday ? "rgba(110, 231, 183, 0.15)" : "transparent",
-                  boxShadow: isToday && entry
+                  backgroundColor: hasEntries ? bgColor : isToday ? "rgba(110, 231, 183, 0.15)" : "transparent",
+                  boxShadow: isToday && hasEntries
                     ? `0 0 0 2px white, 0 0 0 4px ${bgColor}`
                     : isToday
                     ? `0 0 0 2px #6ee7b7`
                     : "none",
-                  opacity: entry ? 1 : isToday ? 1 : 0.7,
-                  cursor: entry ? "pointer" : "default",
+                  opacity: hasEntries ? 1 : isToday ? 1 : 0.7,
+                  cursor: hasEntries ? "pointer" : "default",
                 }}
               >
                 <span className="text-xs" style={{
-                  color: entry ? "#44403c" : isToday ? "#5ec89a" : mutedColor,
-                  fontWeight: (entry || isToday) ? 600 : 400,
+                  color: hasEntries ? "#44403c" : isToday ? "#5ec89a" : mutedColor,
+                  fontWeight: (hasEntries || isToday) ? 600 : 400,
                 }}>
                   {day}
                 </span>
