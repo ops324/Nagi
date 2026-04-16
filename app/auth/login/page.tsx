@@ -102,12 +102,19 @@ export default function LoginPage() {
           </form>
         </div>
 
-        <p className="text-center text-xs mt-6" style={{ color: "var(--text-muted)" }}>
-          アカウントをお持ちでない方は{" "}
-          <Link href="/auth/signup" className="underline" style={{ color: "var(--text-secondary)" }}>
-            新規登録
-          </Link>
-        </p>
+        <div className="text-center text-xs mt-6 space-y-2">
+          <p style={{ color: "var(--text-muted)" }}>
+            <Link href="/auth/forgot-password" className="underline" style={{ color: "var(--text-secondary)" }}>
+              パスワードを忘れた方
+            </Link>
+          </p>
+          <p style={{ color: "var(--text-muted)" }}>
+            アカウントをお持ちでない方は{" "}
+            <Link href="/auth/signup" className="underline" style={{ color: "var(--text-secondary)" }}>
+              新規登録
+            </Link>
+          </p>
+        </div>
       </div>
     </div>
   );

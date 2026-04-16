@@ -34,6 +34,16 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL("/auth/login", request.url));
   }
 
+  // auth/callback はセッション確立前にアクセスするため除外
+  if (pathname.startsWith("/auth/callback")) {
+    return supabaseResponse;
+  }
+
+  // パスワード再設定ページはリカバリーセッションで認証済みなので通過を許可
+  if (user && pathname === "/auth/reset-password") {
+    return supabaseResponse;
+  }
+
   // ログイン済みユーザーが認証ページにアクセスしたらトップへ
   if (user && pathname.startsWith("/auth")) {
     return NextResponse.redirect(new URL("/", request.url));
