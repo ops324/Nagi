@@ -313,11 +313,15 @@ export default function Home() {
                       ) : (
                         <button
                           onClick={() => setDeletingId(entry.id)}
-                          className="text-xs tracking-widest px-2 py-1 rounded-lg transition-opacity opacity-40 hover:opacity-80"
-                          style={{ color: "var(--text-muted)", letterSpacing: "0.05em" }}
+                          className="flex items-center justify-center w-7 h-7 rounded-full transition-colors hover:bg-black/5"
+                          style={{ color: "var(--text-muted)" }}
                           aria-label="メニュー"
                         >
-                          ・・・
+                          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                            <circle cx="3" cy="8" r="1.5" />
+                            <circle cx="8" cy="8" r="1.5" />
+                            <circle cx="13" cy="8" r="1.5" />
+                          </svg>
                         </button>
                       )}
                     </div>
