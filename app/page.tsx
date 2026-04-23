@@ -32,6 +32,7 @@ export default function Home() {
   const [error, setError] = useState("");
   const [tab, setTab] = useState<Tab>("journal");
   const [highlightedEntryId, setHighlightedEntryId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
 
@@ -136,6 +137,15 @@ export default function Home() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleDelete = async (id: string) => {
+    const supabase = createClient();
+    const { error } = await supabase.from("entries").delete().eq("id", id);
+    if (!error) {
+      setEntries((prev) => prev.filter((e) => e.id !== id));
+    }
+    setDeletingId(null);
   };
 
   // カレンダー／グラフから記録タブの該当エントリへナビゲート
@@ -281,8 +291,35 @@ export default function Home() {
                       boxShadow: highlightedEntryId === entry.id ? "0 0 0 3px color-mix(in srgb, var(--tab-active) 20%, transparent)" : "none",
                       transition: "border-color 0.4s ease, box-shadow 0.4s ease",
                     }}>
-                    <div className="flex items-center">
+                    <div className="flex items-center justify-between">
                       <time className="text-xs" style={{ color: "var(--text-muted)" }}>{fmtDate(entry.createdAt)}</time>
+                      {deletingId === entry.id ? (
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleDelete(entry.id)}
+                            className="text-xs tracking-widest px-3 py-1 rounded-full transition-colors"
+                            style={{ backgroundColor: "#fca5a530", color: "#ef4444", border: "1px solid #fca5a5" }}
+                          >
+                            削除する
+                          </button>
+                          <button
+                            onClick={() => setDeletingId(null)}
+                            className="text-xs tracking-widest px-3 py-1 rounded-full"
+                            style={{ color: "var(--text-muted)", border: "1px solid var(--border)" }}
+                          >
+                            やめる
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => setDeletingId(entry.id)}
+                          className="text-xs opacity-30 hover:opacity-70 transition-opacity px-2 py-1 rounded-lg"
+                          style={{ color: "var(--text-muted)" }}
+                          aria-label="削除"
+                        >
+                          ✕
+                        </button>
+                      )}
                     </div>
 
                     {/* 感情グラデーション */}
