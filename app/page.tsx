@@ -313,11 +313,11 @@ export default function Home() {
                       ) : (
                         <button
                           onClick={() => setDeletingId(entry.id)}
-                          className="text-xs opacity-30 hover:opacity-70 transition-opacity px-2 py-1 rounded-lg"
-                          style={{ color: "var(--text-muted)" }}
-                          aria-label="削除"
+                          className="text-xs tracking-widest px-2 py-1 rounded-lg transition-opacity opacity-40 hover:opacity-80"
+                          style={{ color: "var(--text-muted)", letterSpacing: "0.05em" }}
+                          aria-label="メニュー"
                         >
-                          ✕
+                          ・・・
                         </button>
                       )}
                     </div>
