@@ -29,8 +29,9 @@ export async function proxy(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
-  // 未ログインユーザーを /auth/login にリダイレクト（認証ページは除外）
-  if (!user && !pathname.startsWith("/auth")) {
+  // 未ログインユーザーを /auth/login にリダイレクト（認証ページ・公開ページは除外）
+  const publicPaths = ["/privacy", "/terms"];
+  if (!user && !pathname.startsWith("/auth") && !publicPaths.includes(pathname)) {
     return NextResponse.redirect(new URL("/auth/login", request.url));
   }
 

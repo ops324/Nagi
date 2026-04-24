@@ -118,6 +118,18 @@ export default function SignupPage() {
             ログイン
           </Link>
         </p>
+
+        <p className="text-center text-xs mt-4" style={{ color: "var(--text-muted)" }}>
+          ご登録の前に{" "}
+          <Link href="/terms" className="underline" style={{ color: "var(--text-muted)" }}>
+            利用規約
+          </Link>
+          {" "}と{" "}
+          <Link href="/privacy" className="underline" style={{ color: "var(--text-muted)" }}>
+            プライバシーポリシー
+          </Link>
+          {" "}をご確認ください
+        </p>
       </div>
     </div>
   );
