@@ -297,7 +297,6 @@ export default function Home() {
             {/* 記録一覧 */}
             {entries.length > 0 ? (
               <div className="space-y-4">
-                <p className="text-xs tracking-widest px-1" style={{ color: "var(--text-muted)" }}>過去の記録</p>
                 {entries.map((entry) => (
                   <article
                     key={entry.id}
