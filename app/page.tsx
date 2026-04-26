@@ -196,7 +196,7 @@ export default function Home() {
       {/* ── Header ── */}
       <header className="sticky top-0 z-10"
         style={{ backgroundColor: "var(--bg-header)", backdropFilter: "blur(12px)", borderBottom: "1px solid var(--border)" }}>
-        <div className="max-w-lg mx-auto px-6 pt-5 pb-0">
+        <div className="max-w-lg mx-auto px-[27px] pt-5 pb-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl overflow-hidden flex-shrink-0">
@@ -256,7 +256,7 @@ export default function Home() {
         </div>
       </header>
 
-      <main className="max-w-lg mx-auto px-6 py-8 space-y-5">
+      <main className="max-w-lg mx-auto px-[27px] py-8 space-y-5">
 
         {/* ══════════════════════════════
             記録タブ
@@ -264,7 +264,7 @@ export default function Home() {
         {tab === "journal" && (
           <>
             {/* 入力エリア */}
-            <div className="rounded-3xl p-6 shadow-sm"
+            <div className="rounded-3xl p-[27px] shadow-sm"
               style={{ backgroundColor: "var(--bg-card)", border: "1px solid var(--border)" }}>
               <p className="text-xs tracking-widest mb-4" style={{ color: "var(--text-muted)" }}>今日の記録</p>
               <textarea
@@ -315,7 +315,7 @@ export default function Home() {
                       style={{ background: "linear-gradient(to bottom, transparent, var(--border-inner) 30%, var(--border-inner) 70%, transparent)" }} />
 
                     {/* メインコンテンツ */}
-                    <div className="flex-1 min-w-0 space-y-4 p-[54px] py-7">
+                    <div className="flex-1 min-w-0 space-y-4 p-[27px]">
 
                       {/* 日時 + メニュー */}
                       <div className="flex items-center justify-between">
