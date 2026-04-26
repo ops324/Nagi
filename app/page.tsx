@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { Entry, Emotion, EMOTION_COLORS } from "./types";
 import { createClient } from "@/lib/supabase/client";
@@ -26,6 +27,7 @@ const EmotionCalendar = dynamic(() => import("./components/EmotionCalendar"), { 
 type Tab = "journal" | "calendar";
 
 export default function Home() {
+  const router = useRouter();
   const [content, setContent] = useState("");
   const [entries, setEntries] = useState<Entry[]>([]);
   const [loading, setLoading] = useState(false);
@@ -35,31 +37,33 @@ export default function Home() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const supabase = createClient();
 
     const loadUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      setUserEmail(user.email ?? null);
+      const { data: claimsData, error } = await supabase.auth.getClaims();
+      if (error || !claimsData?.claims) { router.replace("/auth/login"); return; }
+      const claims = claimsData.claims;
+      setUserEmail(claims.email ?? null);
 
       const { data: profile } = await supabase
         .from("profiles")
         .select("is_admin")
-        .eq("id", user.id)
+        .eq("id", claims.sub)
         .single();
       if (profile?.is_admin) setIsAdmin(true);
     };
 
     const loadEntries = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      const { data: claimsData, error } = await supabase.auth.getClaims();
+      if (error || !claimsData?.claims) { router.replace("/auth/login"); return; }
 
       const { data } = await supabase
         .from("entries")
         .select("*")
-        .eq("user_id", user.id)
+        .eq("user_id", claimsData.claims.sub)
         .order("created_at", { ascending: false });
 
       if (data && data.length > 0) {
@@ -105,8 +109,9 @@ export default function Home() {
       if (!res.ok) { setError(data.error || "エラーが発生しました"); return; }
 
       const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      const { data: claimsData, error: authErr } = await supabase.auth.getClaims();
+      if (authErr || !claimsData?.claims) return;
+      const userId = claimsData.claims.sub;
 
       const entry: Entry = {
         id: Date.now().toString(),
@@ -121,7 +126,7 @@ export default function Home() {
 
       await supabase.from("entries").insert({
         id:            entry.id,
-        user_id:       user.id,
+        user_id:       userId,
         content:       entry.content,
         comment:       entry.comment,
         emotions:      entry.emotions,
@@ -146,6 +151,15 @@ export default function Home() {
       setEntries((prev) => prev.filter((e) => e.id !== id));
     }
     setDeletingId(null);
+  };
+
+  const toggleExpand = (id: string) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   };
 
   // カレンダー／グラフから記録タブの該当エントリへナビゲート
@@ -195,26 +209,30 @@ export default function Home() {
                 <p className="text-xs tracking-widest mt-0.5" style={{ color: "var(--text-muted)" }}>Nagi · 自己観察の記録</p>
               </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               {isAdmin && (
-                <a href="/admin" className="text-xs tracking-widest px-3 py-1.5 rounded-full"
-                  style={{ backgroundColor: "var(--bg)", border: "1px solid var(--border)", color: "var(--text-muted)" }}>
-                  管理
+                <a href="/admin"
+                  className="flex items-center justify-center w-8 h-8 rounded-full transition-colors"
+                  style={{ border: "1px solid var(--border)", color: "var(--text-muted)" }}
+                  title="管理">
+                  <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="1" y="1" width="6" height="6" rx="1.5"/>
+                    <rect x="9" y="1" width="6" height="6" rx="1.5"/>
+                    <rect x="1" y="9" width="6" height="6" rx="1.5"/>
+                    <rect x="9" y="9" width="6" height="6" rx="1.5"/>
+                  </svg>
                 </a>
               )}
               {userEmail && (
-                <a href="/account" className="text-xs tracking-widest px-3 py-1.5 rounded-full"
-                  style={{ backgroundColor: "var(--bg)", border: "1px solid var(--border)", color: "var(--text-muted)" }}>
-                  設定
+                <a href="/account"
+                  className="flex items-center justify-center w-8 h-8 rounded-full transition-colors"
+                  style={{ border: "1px solid var(--border)", color: "var(--text-muted)" }}
+                  title="設定・ログアウト">
+                  <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                    <circle cx="8" cy="5.5" r="2.5"/>
+                    <path d="M2.5 14c0-2.76 2.46-5 5.5-5s5.5 2.24 5.5 5"/>
+                  </svg>
                 </a>
-              )}
-              {userEmail && (
-                <form action={logout}>
-                  <button type="submit" className="text-xs tracking-widest px-3 py-1.5 rounded-full"
-                    style={{ backgroundColor: "var(--bg)", border: "1px solid var(--border)", color: "var(--text-muted)" }}>
-                    ログアウト
-                  </button>
-                </form>
               )}
             </div>
           </div>
@@ -284,67 +302,113 @@ export default function Home() {
                   <article
                     key={entry.id}
                     id={`entry-${entry.id}`}
-                    className="rounded-3xl p-6 shadow-sm space-y-4"
+                    className="rounded-3xl overflow-hidden shadow-sm flex"
                     style={{
                       backgroundColor: "var(--bg-card)",
                       border: `1px solid ${highlightedEntryId === entry.id ? "var(--tab-active)" : "var(--border)"}`,
                       boxShadow: highlightedEntryId === entry.id ? "0 0 0 3px color-mix(in srgb, var(--tab-active) 20%, transparent)" : "none",
                       transition: "border-color 0.4s ease, box-shadow 0.4s ease",
                     }}>
-                    <div className="flex items-center justify-between">
-                      <time className="text-xs" style={{ color: "var(--text-muted)" }}>{fmtDate(entry.createdAt)}</time>
-                      {deletingId === entry.id ? (
-                        <div className="flex items-center gap-2">
+
+                    {/* 左縦線アクセント */}
+                    <div className="flex-shrink-0 w-[3px] self-stretch rounded-l-3xl"
+                      style={{ background: "linear-gradient(to bottom, transparent, var(--border-inner) 30%, var(--border-inner) 70%, transparent)" }} />
+
+                    {/* メインコンテンツ */}
+                    <div className="flex-1 min-w-0 space-y-4 p-[54px] py-7">
+
+                      {/* 日時 + メニュー */}
+                      <div className="flex items-center justify-between">
+                        <time className="text-xs" style={{ color: "var(--text-muted)" }}>{fmtDate(entry.createdAt)}</time>
+                        {deletingId === entry.id ? (
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => handleDelete(entry.id)}
+                              className="text-xs tracking-widest px-3 py-1 rounded-full transition-colors"
+                              style={{ backgroundColor: "#fca5a530", color: "#ef4444", border: "1px solid #fca5a5" }}
+                            >
+                              削除する
+                            </button>
+                            <button
+                              onClick={() => setDeletingId(null)}
+                              className="text-xs tracking-widest px-3 py-1 rounded-full"
+                              style={{ color: "var(--text-muted)", border: "1px solid var(--border)" }}
+                            >
+                              やめる
+                            </button>
+                          </div>
+                        ) : (
                           <button
-                            onClick={() => handleDelete(entry.id)}
-                            className="text-xs tracking-widest px-3 py-1 rounded-full transition-colors"
-                            style={{ backgroundColor: "#fca5a530", color: "#ef4444", border: "1px solid #fca5a5" }}
+                            onClick={() => setDeletingId(entry.id)}
+                            className="flex items-center justify-center w-7 h-7 rounded-full transition-colors hover:bg-black/5"
+                            style={{ color: "var(--text-muted)" }}
+                            aria-label="メニュー"
                           >
-                            削除する
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                              <circle cx="3" cy="8" r="1.5" />
+                              <circle cx="8" cy="8" r="1.5" />
+                              <circle cx="13" cy="8" r="1.5" />
+                            </svg>
                           </button>
-                          <button
-                            onClick={() => setDeletingId(null)}
-                            className="text-xs tracking-widest px-3 py-1 rounded-full"
-                            style={{ color: "var(--text-muted)", border: "1px solid var(--border)" }}
-                          >
-                            やめる
-                          </button>
-                        </div>
-                      ) : (
-                        <button
-                          onClick={() => setDeletingId(entry.id)}
-                          className="flex items-center justify-center w-7 h-7 rounded-full transition-colors hover:bg-black/5"
-                          style={{ color: "var(--text-muted)" }}
-                          aria-label="メニュー"
-                        >
-                          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                            <circle cx="3" cy="8" r="1.5" />
-                            <circle cx="8" cy="8" r="1.5" />
-                            <circle cx="13" cy="8" r="1.5" />
-                          </svg>
-                        </button>
+                        )}
+                      </div>
+
+                      {/* 感情グラデーション */}
+                      {entry.emotions?.length > 0 && (
+                        <div className="h-px rounded-full w-full"
+                          style={{ background: emotionGradient(entry.emotions) }} />
                       )}
-                    </div>
 
-                    {/* 感情グラデーション */}
-                    {entry.emotions?.length > 0 && (
-                      <div className="h-1 rounded-full w-full"
-                        style={{ background: emotionGradient(entry.emotions) }} />
-                    )}
+                      {/* 感情チップ */}
+                      {entry.emotions?.length > 0 && (
+                        <div className="flex gap-1.5 flex-wrap">
+                          {entry.emotions.map((em) => (
+                            <span key={em.label}
+                              className="text-xs px-3 py-1 rounded-full flex items-center gap-1.5"
+                              style={{
+                                backgroundColor: (EMOTION_COLORS[em.label] || "#6ee7b7") + "22",
+                                color: "var(--text-secondary)",
+                                border: "1px solid " + (EMOTION_COLORS[em.label] || "#6ee7b7") + "44",
+                              }}>
+                              <span className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                                style={{ backgroundColor: EMOTION_COLORS[em.label] || "#6ee7b7" }} />
+                              {em.label}
+                            </span>
+                          ))}
+                        </div>
+                      )}
 
-                    <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: "var(--text-entry)" }}>
-                      {entry.content}
-                    </p>
-
-                    {/* 凪のコメント */}
-                    <div className="rounded-2xl p-4" style={{
-                      backgroundColor: "var(--bg-comment)",
-                      borderLeft: entry.insightLevel === "deep" ? "2px solid var(--tab-active)" : undefined,
-                    }}>
-                      <p className="text-xs tracking-widest mb-2" style={{ color: "var(--text-muted)" }}>凪より</p>
-                      <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)", fontStyle: "italic" }}>
-                        {entry.comment}
+                      {/* 本文 */}
+                      <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: "var(--text-entry)" }}>
+                        {entry.content}
                       </p>
+
+                      {/* FROM NAGI — 折りたたみ */}
+                      <div>
+                        <button
+                          onClick={() => toggleExpand(entry.id)}
+                          className="w-full flex items-center gap-2"
+                          style={{ color: "var(--text-muted)" }}
+                        >
+                          <span className="text-xs tracking-widest flex-shrink-0">FROM NAGI</span>
+                          <div className="flex-1 h-px" style={{ backgroundColor: "var(--border-inner)" }} />
+                          <span className="text-xs tracking-widest flex-shrink-0">
+                            {expandedIds.has(entry.id) ? "とじる" : "ひらく"}
+                          </span>
+                        </button>
+                        {expandedIds.has(entry.id) && (
+                          <p className="text-sm leading-relaxed mt-3"
+                            style={{
+                              color: "var(--text-secondary)",
+                              fontStyle: "italic",
+                              borderLeft: entry.insightLevel === "deep" ? "2px solid var(--tab-active)" : undefined,
+                              paddingLeft: entry.insightLevel === "deep" ? "12px" : undefined,
+                            }}>
+                            {entry.comment}
+                          </p>
+                        )}
+                      </div>
+
                     </div>
                   </article>
                 ))}

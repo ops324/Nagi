@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { logout } from "../auth/actions";
 
 export default function AccountPage() {
   const router = useRouter();
@@ -31,12 +32,12 @@ export default function AccountPage() {
 
   useEffect(() => {
     const loadUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
+      const { data: claimsData, error } = await supabase.auth.getClaims();
+      if (error || !claimsData?.claims) {
         router.replace("/auth/login");
         return;
       }
-      setUserEmail(user.email ?? "");
+      setUserEmail(claimsData.claims.email ?? "");
       setLoading(false);
     };
     loadUser();
@@ -332,6 +333,16 @@ export default function AccountPage() {
             </div>
           )}
         </section>
+
+        {/* ログアウト */}
+        <div className="text-center">
+          <form action={logout}>
+            <button type="submit" className="text-xs tracking-widest px-6 py-2.5 rounded-full transition-colors"
+              style={{ border: "1px solid var(--border)", color: "var(--text-muted)", backgroundColor: "var(--bg)", cursor: "pointer" }}>
+              ログアウト
+            </button>
+          </form>
+        </div>
 
         {/* 戻るリンク */}
         <div className="text-center pb-4">
