@@ -64,10 +64,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "入力が長すぎます（5000文字以内）" }, { status: 400 });
     }
 
+    // ── 入力長に応じたティア判定 ──
+    const charCount = content.trim().length;
+    const tier =
+      charCount <= 50  ? { commentRange: "30〜50",   maxTokens: 300 } :
+      charCount <= 150 ? { commentRange: "60〜100",  maxTokens: 500 } :
+                         { commentRange: "100〜150", maxTokens: 800 };
+
     // ── AI コメント生成 ──
     const message = await client.messages.create({
       model: "claude-haiku-4-5-20251001",
-      max_tokens: 800,
+      max_tokens: tier.maxTokens,
       system: SYSTEM_PROMPT,
       messages: [
         {
@@ -76,7 +83,9 @@ export async function POST(request: NextRequest) {
 
 <user_diary>
 ${content}
-</user_diary>`,
+</user_diary>
+
+コメントの文字数目安: ${tier.commentRange}字`,
         },
       ],
     });
