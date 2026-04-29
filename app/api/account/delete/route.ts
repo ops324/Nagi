@@ -13,14 +13,16 @@ export async function DELETE(request: NextRequest) {
 
     // 認証済みユーザーを確認
     const supabase = await createClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { data: claimsData, error: claimsError } = await supabase.auth.getClaims();
 
-    if (authError || !user) {
+    if (claimsError || !claimsData?.claims) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const userId = claimsData.claims.sub;
+
     // レート制限（1ユーザー 3回/時間 — 削除は頻繁に呼ばれるべきでない）
-    const { success, resetAt } = await rateLimit(`delete:${user.id}`, 3, 60 * 60 * 1000);
+    const { success, resetAt } = await rateLimit(`delete:${userId}`, 3, 60 * 60 * 1000);
     if (!success) {
       return NextResponse.json(
         { error: "リクエスト回数の上限に達しました" },
@@ -32,8 +34,6 @@ export async function DELETE(request: NextRequest) {
         }
       );
     }
-
-    const userId = user.id;
 
     // createAdminClient を使用（lib/supabase/server.ts に集約）
     const adminClient = await createAdminClient();

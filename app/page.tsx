@@ -1,11 +1,40 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { Entry, Emotion, EMOTION_COLORS } from "./types";
 import { createClient } from "@/lib/supabase/client";
 import { logout } from "./auth/actions";
+
+const LOADING_QUESTIONS: Record<"negative" | "positive" | "neutral", string[]> = {
+  negative: [
+    "今、体のどこかに重さを感じますか",
+    "その感情は、何を守ろうとしているのでしょう",
+    "この気持ちに形があるとしたら、どんな形でしょう",
+    "少し離れた場所から、今の自分を眺めてみてください",
+  ],
+  positive: [
+    "この喜びは、あなたの何と共鳴していますか",
+    "今の自分に、どんな言葉を贈りますか",
+    "この感覚を、もう少しだけ味わってみてください",
+    "何がそれを可能にしたのでしょう",
+  ],
+  neutral: [
+    "今この瞬間、呼吸はどんな深さですか",
+    "この出来事を少し遠くから眺めたら、どう見えるでしょう",
+    "記録することで、何かが変わりましたか",
+    "この記録の奥に、何が静かに在りますか",
+  ],
+};
+
+const PHASE_LABELS = ["読んでいます", "感じています", "ことばを選んでいます"] as const;
+
+const detectTone = (text: string): keyof typeof LOADING_QUESTIONS => {
+  if (/疲|つら|辛|悲|苦|怒|不安|心配|嫌|落ち込|きつ|しんど|泣|痛|怖|絶望|無理/.test(text)) return "negative";
+  if (/嬉|楽し|よかっ|良かっ|最高|うれし|幸|ありがた|充実|達成|できた|頑張|嬉しい/.test(text)) return "positive";
+  return "neutral";
+};
 
 const emotionGradient = (emotions: Emotion[]) => {
   if (!emotions?.length) return "transparent";
@@ -38,6 +67,13 @@ export default function Home() {
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const [newEntryId, setNewEntryId] = useState<string | null>(null);
+  const [loadingPhase, setLoadingPhase] = useState(0);
+  const [loadingQuestion, setLoadingQuestion] = useState<string | null>(null);
+  const questionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [notes, setNotes] = useState<Record<string, string>>({});
+  const [savedNoteIds, setSavedNoteIds] = useState<Set<string>>(new Set());
+  const noteTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
   useEffect(() => {
     const supabase = createClient();
@@ -72,13 +108,26 @@ export default function Home() {
           ...e,
           createdAt:    e.created_at,
           insightLevel: e.insight_level,
+          note:         e.note ?? "",
         })) as Entry[]);
+        // 余韻メモを notes state に初期化
+        const initialNotes: Record<string, string> = {};
+        data.forEach(e => { initialNotes[e.id] = e.note ?? ""; });
+        setNotes(initialNotes);
       }
     };
 
     loadUser();
     loadEntries();
   }, []);
+
+  // ローディング中のフェーズサイクル
+  useEffect(() => {
+    if (!loading) { setLoadingPhase(0); return; }
+    const t1 = setTimeout(() => setLoadingPhase(1), 1800);
+    const t2 = setTimeout(() => setLoadingPhase(2), 3800);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, [loading]);
 
   // 時刻に基づくライト/ダークモード切替（6〜18時: ライト、18〜6時: ダーク）
   useEffect(() => {
@@ -99,6 +148,13 @@ export default function Home() {
     if (!content.trim()) return;
     setLoading(true);
     setError("");
+    setLoadingQuestion(null);
+    if (questionTimerRef.current) clearTimeout(questionTimerRef.current);
+    const tone = detectTone(content);
+    const pool = LOADING_QUESTIONS[tone];
+    questionTimerRef.current = setTimeout(() => {
+      setLoadingQuestion(pool[Math.floor(Math.random() * pool.length)]);
+    }, 1600);
     try {
       const res = await fetch("/api/comment", {
         method: "POST",
@@ -136,12 +192,36 @@ export default function Home() {
         insight_level: entry.insightLevel, // camelCase → snake_case
       });
       setEntries([entry, ...entries]);
+      setExpandedIds((prev) => new Set(prev).add(entry.id));
+      setNewEntryId(entry.id);
+      setTimeout(() => setNewEntryId(null), 4000);
       setContent("");
     } catch {
       setError("通信エラーが発生しました");
     } finally {
       setLoading(false);
+      setLoadingQuestion(null);
+      if (questionTimerRef.current) clearTimeout(questionTimerRef.current);
     }
+  };
+
+  const handleNoteChange = (id: string, value: string) => {
+    setNotes(prev => ({ ...prev, [id]: value }));
+    setSavedNoteIds(prev => { const next = new Set(prev); next.delete(id); return next; });
+
+    const existing = noteTimersRef.current.get(id);
+    if (existing) clearTimeout(existing);
+
+    const timer = setTimeout(async () => {
+      const supabase = createClient();
+      await supabase.from("entries").update({ note: value }).eq("id", id);
+      setSavedNoteIds(prev => new Set(prev).add(id));
+      setTimeout(() => setSavedNoteIds(prev => {
+        const next = new Set(prev); next.delete(id); return next;
+      }), 2000);
+    }, 800);
+
+    noteTimersRef.current.set(id, timer);
   };
 
   const handleDelete = async (id: string) => {
@@ -267,31 +347,65 @@ export default function Home() {
             <div className="rounded-3xl p-[27px] shadow-sm"
               style={{ backgroundColor: "var(--bg-card)", border: "1px solid var(--border)" }}>
               <p className="text-xs tracking-widest mb-4" style={{ color: "var(--text-muted)" }}>今日の記録</p>
-              <textarea
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                placeholder={"今日、どんなことがありましたか。\nうまく言葉にならなくても、大丈夫です。"}
-                className="w-full h-40 text-sm resize-none outline-none leading-relaxed"
-                style={{
-                  color: "var(--text-primary)",
-                  backgroundColor: "transparent",
-                }}
-              />
-              {error && <p className="text-xs mt-2" style={{ color: "#fca5a5" }}>{error}</p>}
-              <div className="flex justify-end mt-4">
-                <button
-                  onClick={handleSubmit}
-                  disabled={loading || !content.trim()}
-                  className="px-7 py-2.5 rounded-full text-xs tracking-widest transition-all"
+
+              {loading ? (
+                /* ── ローディング演出 ── */
+                <div className="h-40 flex flex-col items-center justify-center gap-5">
+                  {/* 波紋 */}
+                  <div className="relative w-12 h-12 flex items-center justify-center flex-shrink-0">
+                    <div className="loading-ring" style={{ animationDelay: "0s" }} />
+                    <div className="loading-ring" style={{ animationDelay: "0.87s" }} />
+                    <div className="loading-ring" style={{ animationDelay: "1.73s" }} />
+                    <div className="w-2 h-2 rounded-full flex-shrink-0"
+                      style={{ backgroundColor: "#6ee7b7", opacity: 0.7 }} />
+                  </div>
+
+                  {/* フェーズテキスト */}
+                  <p key={loadingPhase}
+                    className="text-xs tracking-widest nagi-phase"
+                    style={{ color: "var(--text-muted)" }}>
+                    {PHASE_LABELS[loadingPhase]}
+                  </p>
+                </div>
+              ) : (
+                <textarea
+                  value={content}
+                  onChange={(e) => setContent(e.target.value)}
+                  placeholder={"今日、どんなことがありましたか。\nうまく言葉にならなくても、大丈夫です。"}
+                  className="w-full h-40 text-sm resize-none outline-none leading-relaxed"
                   style={{
-                    backgroundColor: loading || !content.trim() ? "var(--bg-disabled)" : "#6ee7b7",
-                    color:           loading || !content.trim() ? "var(--text-disabled)" : "#065f46",
-                    cursor:          loading || !content.trim() ? "not-allowed" : "pointer",
+                    color: "var(--text-primary)",
+                    backgroundColor: "transparent",
                   }}
-                >
-                  {loading ? "受け取り中…" : "記録する"}
-                </button>
-              </div>
+                />
+              )}
+
+              {/* 問いかけ（ローディング中のみ） */}
+              {loadingQuestion && (
+                <p key={loadingQuestion}
+                  className="text-sm text-center leading-relaxed nagi-question"
+                  style={{ color: "var(--text-secondary)", fontStyle: "italic" }}>
+                  {loadingQuestion}
+                </p>
+              )}
+
+              {error && <p className="text-xs mt-2" style={{ color: "#fca5a5" }}>{error}</p>}
+              {!loading && (
+                <div className="flex justify-end mt-4">
+                  <button
+                    onClick={handleSubmit}
+                    disabled={!content.trim()}
+                    className="px-7 py-2.5 rounded-full text-xs tracking-widest transition-all"
+                    style={{
+                      backgroundColor: !content.trim() ? "var(--bg-disabled)" : "#6ee7b7",
+                      color:           !content.trim() ? "var(--text-disabled)" : "#065f46",
+                      cursor:          !content.trim() ? "not-allowed" : "pointer",
+                    }}
+                  >
+                    記録する
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* 記録一覧 */}
@@ -383,28 +497,72 @@ export default function Home() {
                       </p>
 
                       {/* FROM NAGI — 折りたたみ */}
-                      <div>
+                      <div
+                        className={newEntryId === entry.id ? "nagi-comment-highlight" : ""}
+                        style={newEntryId === entry.id ? {
+                          borderRadius: "16px",
+                          padding: "12px",
+                          margin: "-12px",
+                          backgroundColor: "color-mix(in srgb, var(--tab-active) 8%, transparent)",
+                          border: "1px solid color-mix(in srgb, var(--tab-active) 25%, transparent)",
+                          transition: "background-color 1.5s ease, border-color 1.5s ease",
+                        } : undefined}
+                      >
                         <button
                           onClick={() => toggleExpand(entry.id)}
                           className="w-full flex items-center gap-2"
-                          style={{ color: "var(--text-muted)" }}
+                          style={{ color: newEntryId === entry.id ? "var(--tab-active)" : "var(--text-muted)" }}
                         >
-                          <span className="text-xs tracking-widest flex-shrink-0">FROM NAGI</span>
-                          <div className="flex-1 h-px" style={{ backgroundColor: "var(--border-inner)" }} />
+                          <span className="text-xs tracking-widest flex-shrink-0 flex items-center gap-1.5">
+                            {newEntryId === entry.id && (
+                              <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                            )}
+                            FROM NAGI
+                          </span>
+                          <div className="flex-1 h-px"
+                            style={{ backgroundColor: newEntryId === entry.id ? "color-mix(in srgb, var(--tab-active) 40%, transparent)" : "var(--border-inner)" }} />
                           <span className="text-xs tracking-widest flex-shrink-0">
                             {expandedIds.has(entry.id) ? "とじる" : "ひらく"}
                           </span>
                         </button>
                         {expandedIds.has(entry.id) && (
-                          <p className="text-sm leading-relaxed mt-3"
-                            style={{
-                              color: "var(--text-secondary)",
-                              fontStyle: "italic",
-                              borderLeft: entry.insightLevel === "deep" ? "2px solid var(--tab-active)" : undefined,
-                              paddingLeft: entry.insightLevel === "deep" ? "12px" : undefined,
-                            }}>
-                            {entry.comment}
-                          </p>
+                          <>
+                            <p className="text-sm leading-relaxed mt-3"
+                              style={{
+                                color: "var(--text-secondary)",
+                                fontStyle: "italic",
+                                borderLeft: entry.insightLevel === "deep" ? "2px solid var(--tab-active)" : undefined,
+                                paddingLeft: entry.insightLevel === "deep" ? "12px" : undefined,
+                              }}>
+                              {entry.comment}
+                            </p>
+
+                            {/* 余韻メモ */}
+                            <div className="mt-4">
+                              <div className="flex items-center gap-2 mb-3">
+                                <span className="text-xs tracking-widest flex-shrink-0" style={{ color: "var(--text-muted)" }}>メモ</span>
+                                <div className="flex-1 h-px" style={{ backgroundColor: "var(--border)" }} />
+                              </div>
+                              <textarea
+                                value={notes[entry.id] ?? ""}
+                                onChange={(e) => handleNoteChange(entry.id, e.target.value)}
+                                placeholder="…"
+                                rows={2}
+                                className="w-full text-sm resize-none outline-none leading-relaxed"
+                                style={{
+                                  color: "var(--text-primary)",
+                                  backgroundColor: "transparent",
+                                }}
+                              />
+                              <div className="flex justify-end h-4 mt-1">
+                                {savedNoteIds.has(entry.id) && (
+                                  <span className="text-xs nagi-phase" style={{ color: "var(--text-muted)" }}>
+                                    保存しました
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </>
                         )}
                       </div>
 
@@ -414,9 +572,14 @@ export default function Home() {
               </div>
             ) : (
               !loading && (
-                <div className="text-center py-20">
+                <div className="text-center py-16">
+                  <div className="w-10 h-10 mx-auto mb-4 rounded-2xl overflow-hidden opacity-40">
+                    <img src="/icon-nagi.png" alt="Nagi" className="w-10 h-10 block" />
+                  </div>
                   <p className="text-sm" style={{ color: "var(--text-subtle)" }}>まだ記録がありません</p>
-                  <p className="text-xs mt-2" style={{ color: "var(--text-faint)" }}>今日の気持ちを書いてみてください</p>
+                  <p className="text-xs mt-2 leading-relaxed" style={{ color: "var(--text-faint)" }}>
+                    はじめての記録をすると、凪からことばが届きます
+                  </p>
                 </div>
               )
             )}

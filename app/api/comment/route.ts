@@ -24,15 +24,17 @@ export async function POST(request: NextRequest) {
 
     // ── 認証チェック ──
     const supabase = await createClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { data: claimsData, error: claimsError } = await supabase.auth.getClaims();
 
-    if (authError || !user) {
+    if (claimsError || !claimsData?.claims) {
       return NextResponse.json({ error: "認証が必要です" }, { status: 401 });
     }
 
+    const userId = claimsData.claims.sub;
+
     // ── レート制限（1ユーザー 20回/時間） ──
     const { success, remaining, resetAt } = await rateLimit(
-      `comment:${user.id}`,
+      `comment:${userId}`,
       20,
       60 * 60 * 1000
     );

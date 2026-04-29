@@ -161,6 +161,46 @@
 .icon-anim:hover::after  { animation-duration: 7.0s; }
 .icon-anim:hover::before { animation-duration: 4.9s; }
 
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   ローディング波紋・問いかけフェードイン
+   ─────────────────────────────────────────────────────────────
+   ripple-expand : 中心から同心円が広がって消える（水面の波紋）
+   nagi-phase-in : フェーズテキストがふわりと現れる
+   nagi-q-in     : 問いかけが少し遅れてやわらかく浮かび上がる
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+@keyframes ripple-expand {
+  0%   { transform: scale(0.55); opacity: 0.55; }
+  100% { transform: scale(3.2);  opacity: 0; }
+}
+
+@keyframes nagi-phase-in {
+  from { opacity: 0; transform: translateY(5px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes nagi-q-in {
+  0%   { opacity: 0; transform: translateY(8px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+.loading-ring {
+  position: absolute;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 1px solid rgba(110, 231, 183, 0.45);
+  animation: ripple-expand 2.6s cubic-bezier(0.2, 0.6, 0.4, 1) infinite;
+}
+
+.nagi-phase {
+  animation: nagi-phase-in 0.6s ease forwards;
+}
+
+.nagi-question {
+  animation: nagi-q-in 1s ease forwards;
+}
+
 * { box-sizing: border-box; }
 
 html { -webkit-font-smoothing: antialiased; }

@@ -27,6 +27,9 @@ create table if not exists public.entries (
 -- insight_level カラム追加（既存DBへの適用）
 alter table public.entries add column if not exists insight_level text default 'moderate';
 
+-- note カラム追加（余韻メモ：Nagiのコメントを読んだ後の気づきを保存）
+alter table public.entries add column if not exists note text;
+
 -- 3. RLS（Row Level Security）有効化
 alter table public.profiles enable row level security;
 alter table public.entries enable row level security;

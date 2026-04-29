@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { useRouter } from "next/navigation";
 import {
   PieChart, Pie, Cell, Tooltip, ResponsiveContainer,
   LineChart, Line, XAxis, YAxis, CartesianGrid,
@@ -49,7 +48,6 @@ const CARD_STYLE = {
 };
 
 export default function AdminPage() {
-  const router = useRouter();
   const [users, setUsers] = useState<UserRow[]>([]);
   const [emotions, setEmotions] = useState<EmotionRow[]>([]);
   const [energyTrend, setEnergyTrend] = useState<EnergyTrend[]>([]);
@@ -60,27 +58,14 @@ export default function AdminPage() {
   const [churnBuckets, setChurnBuckets] = useState<ChurnBucket[]>([]);
   const [retention, setRetention] = useState<RetentionData[]>([]);
   const [loading, setLoading] = useState(true);
-  const [unauthorized, setUnauthorized] = useState(false);
 
   useEffect(() => {
     const load = async () => {
       const supabase = createClient();
 
-      // 管理者チェック
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { router.push("/auth/login"); return; }
-
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("is_admin")
-        .eq("id", user.id)
-        .single();
-
-      if (!profile?.is_admin) {
-        setUnauthorized(true);
-        setLoading(false);
-        return;
-      }
+      // 認証 + 管理者権限チェックは layout.tsx で完了済み。userId 取得のみ行う
+      const { data: claimsData, error } = await supabase.auth.getClaims();
+      if (error || !claimsData?.claims) return;
 
       // ユーザー一覧
       const { data: usersData } = await supabase
@@ -217,7 +202,7 @@ export default function AdminPage() {
     };
 
     load();
-  }, [router]);
+  }, []);
 
   const totalEntries = users.reduce((s, u) => s + Number(u.total_entries), 0);
   const activeUsers = users.filter(u => {
@@ -232,17 +217,6 @@ export default function AdminPage() {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "var(--bg)" }}>
         <p className="text-sm" style={{ color: "var(--text-muted)" }}>読み込み中…</p>
-      </div>
-    );
-  }
-
-  if (unauthorized) {
-    return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "var(--bg)" }}>
-        <div className="text-center">
-          <p className="text-sm" style={{ color: "var(--text-muted)" }}>管理者権限がありません</p>
-          <a href="/" className="text-xs mt-4 block underline" style={{ color: "var(--text-secondary)" }}>トップへ戻る</a>
-        </div>
       </div>
     );
   }

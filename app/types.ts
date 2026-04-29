@@ -12,6 +12,7 @@ export type Entry = {
   energy: number;
   createdAt: string;
   insightLevel?: "deep" | "moderate" | "gentle";
+  note?: string;
 };
 
 // 感情の価値（valence）×彩度で色を設計するパレット

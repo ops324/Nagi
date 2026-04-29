@@ -1,13 +1,25 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 
 export default function LoginPage() {
   const router = useRouter();
+  const supabase = createClient();
   const [email, setEmail] = useState("");
+
+  useEffect(() => {
+    const checkAlreadyAuthenticated = async () => {
+      const { data: claimsData, error } = await supabase.auth.getClaims();
+      if (!error && claimsData?.claims) {
+        router.replace("/");
+      }
+    };
+    checkAlreadyAuthenticated();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
