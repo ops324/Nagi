@@ -25,8 +25,32 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
-  // getClaims() でローカル JWT 検証し、必要に応じてトークンリフレッシュ（副作用のみ利用）
-  await supabase.auth.getClaims();
+  // getClaims() でローカル JWT 検証・セッションリフレッシュ
+  const { data: claimsData } = await supabase.auth.getClaims();
+  const isAuthenticated = !!claimsData?.claims;
+
+  const { pathname } = request.nextUrl;
+
+  // 公開ページ・コールバックは通過
+  const publicPaths = ["/privacy", "/terms", "/auth/callback"];
+  if (publicPaths.some((p) => pathname.startsWith(p))) {
+    return supabaseResponse;
+  }
+
+  // 未ログインユーザーを /auth/login にリダイレクト
+  if (!isAuthenticated && !pathname.startsWith("/auth")) {
+    return NextResponse.redirect(new URL("/auth/login", request.url));
+  }
+
+  // パスワード再設定ページはリカバリーセッションで通過を許可
+  if (isAuthenticated && pathname === "/auth/reset-password") {
+    return supabaseResponse;
+  }
+
+  // ログイン済みユーザーが /auth/* にアクセスしたらトップへ
+  if (isAuthenticated && pathname.startsWith("/auth")) {
+    return NextResponse.redirect(new URL("/", request.url));
+  }
 
   return supabaseResponse;
 }
