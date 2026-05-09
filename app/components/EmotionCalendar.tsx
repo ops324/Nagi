@@ -142,8 +142,9 @@ export default function EmotionCalendar({ entries, onNavigateToEntry }: Props) {
   }));
   const lastColor = gradientStops[gradientStops.length - 1]?.color || "#6ee7b7";
 
-  const mutedColor  = isDark ? "#6b6560" : "#b5afa8";
-  const textColor   = isDark ? "#9c948c" : "#78716c";
+  // v1.41: WCAG AA 準拠のためコントラスト強化
+  const mutedColor  = isDark ? "#908a85" : "#74706a";
+  const textColor   = isDark ? "#b8b0a8" : "#78716c";
 
   return (
     <div className="space-y-4 pb-24">
@@ -202,18 +203,20 @@ export default function EmotionCalendar({ entries, onNavigateToEntry }: Props) {
         <div className="flex items-center justify-between mb-6">
           <button
             onClick={prevMonth}
-            className="w-8 h-8 rounded-full flex items-center justify-center transition-all text-sm"
+            className="w-11 h-11 rounded-full flex items-center justify-center transition-all text-sm"
             style={{ color: mutedColor }}
+            aria-label="前の月"
           >
             ‹
           </button>
-          <p className="text-sm font-light tracking-widest" style={{ color: textColor }}>
+          <p className="text-sm font-light tracking-widest" style={{ color: textColor }} aria-live="polite">
             {year}年 {month + 1}月
           </p>
           <button
             onClick={nextMonth}
-            className="w-8 h-8 rounded-full flex items-center justify-center transition-all text-sm"
+            className="w-11 h-11 rounded-full flex items-center justify-center transition-all text-sm"
             style={{ color: mutedColor }}
+            aria-label="次の月"
           >
             ›
           </button>
@@ -243,27 +246,36 @@ export default function EmotionCalendar({ entries, onNavigateToEntry }: Props) {
               year === today.getFullYear();
             const bgColor = hasEntries ? (EMOTION_COLORS[dominant] || "#d1fae5") : "transparent";
 
+            const ariaLabel = `${year}年${month + 1}月${day}日${
+              hasEntries ? `・${dailyDominant[dayKey]}` : ""
+            }${isToday ? "・今日" : ""}`;
             return (
               <button
                 key={day}
                 onClick={() => navEntry && onNavigateToEntry(navEntry)}
-                className="mx-auto w-9 h-9 rounded-full flex items-center justify-center transition-all"
-                style={{
-                  backgroundColor: hasEntries ? bgColor : isToday ? "rgba(110, 231, 183, 0.15)" : "transparent",
-                  boxShadow: isToday && hasEntries
-                    ? `0 0 0 2px white, 0 0 0 4px ${bgColor}`
-                    : isToday
-                    ? `0 0 0 2px #6ee7b7`
-                    : "none",
-                  opacity: hasEntries ? 1 : isToday ? 1 : 0.7,
-                  cursor: hasEntries ? "pointer" : "default",
-                }}
+                disabled={!hasEntries}
+                aria-label={ariaLabel}
+                className="mx-auto w-11 h-11 flex items-center justify-center transition-all bg-transparent"
+                style={{ cursor: hasEntries ? "pointer" : "default" }}
               >
-                <span className="text-xs" style={{
-                  color: hasEntries ? "#44403c" : isToday ? "#5ec89a" : mutedColor,
-                  fontWeight: (hasEntries || isToday) ? 600 : 400,
-                }}>
-                  {day}
+                <span
+                  className="w-9 h-9 rounded-full flex items-center justify-center"
+                  style={{
+                    backgroundColor: hasEntries ? bgColor : isToday ? "rgba(110, 231, 183, 0.15)" : "transparent",
+                    boxShadow: isToday && hasEntries
+                      ? `0 0 0 2px white, 0 0 0 4px ${bgColor}`
+                      : isToday
+                      ? `0 0 0 2px var(--green)`
+                      : "none",
+                    opacity: hasEntries ? 1 : isToday ? 1 : 0.7,
+                  }}
+                >
+                  <span className="text-xs" style={{
+                    color: hasEntries ? "#44403c" : isToday ? "#5ec89a" : mutedColor,
+                    fontWeight: (hasEntries || isToday) ? 600 : 400,
+                  }}>
+                    {day}
+                  </span>
                 </span>
               </button>
             );
