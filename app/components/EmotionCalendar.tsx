@@ -151,25 +151,7 @@ export default function EmotionCalendar({ entries, onNavigateToEntry }: Props) {
       {/* ── グラフ ── */}
       <div className="rounded-3xl p-6 shadow-sm"
         style={{ backgroundColor: "var(--bg-card)", border: "1px solid var(--border)" }}>
-        {/* C-2: エネルギー統計ミニサマリー */}
-        {(() => {
-          const thisMonthEntries = entries.filter(e => {
-            const d = new Date(e.createdAt);
-            return d.getFullYear() === year && d.getMonth() === month;
-          });
-          if (thisMonthEntries.length === 0) return (
-            <p className="text-sm font-light tracking-wide mb-5" style={{ color: textColor }}>最近の心の動き</p>
-          );
-          const avg = (thisMonthEntries.reduce((s, e) => s + (e.energy ?? 5), 0) / thisMonthEntries.length).toFixed(1);
-          return (
-            <div className="flex items-center justify-between mb-5">
-              <p className="text-sm font-light tracking-wide" style={{ color: textColor }}>最近の心の動き</p>
-              <p className="text-xs tracking-widest" style={{ color: mutedColor }}>
-                {month + 1}月 · {thisMonthEntries.length}記録 · エネルギー平均 {avg}
-              </p>
-            </div>
-          );
-        })()}
+        <p className="text-sm font-light tracking-wide mb-5" style={{ color: textColor }}>最近の心の動き</p>
         {chartData.length > 0 ? (
           <ResponsiveContainer width="100%" height={140}>
             <AreaChart data={chartData} margin={{ top: 5, right: 5, left: -30, bottom: 0 }} onClick={handleChartClick} style={{ cursor: "pointer" }}>
