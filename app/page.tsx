@@ -75,6 +75,7 @@ export default function Home() {
   const [savedNoteIds, setSavedNoteIds] = useState<Set<string>>(new Set());
   const noteTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const [filterKey, setFilterKey] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
   const [weeklySummary, setWeeklySummary] = useState<string | null>(null);
   const [weeklyLoading, setWeeklyLoading] = useState(false);
 
@@ -577,6 +578,38 @@ export default function Home() {
               );
             })()}
 
+            {/* 検索バー */}
+            {entries.length > 0 && (
+              <div className="relative">
+                <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 pointer-events-none"
+                  style={{ color: "var(--text-faint)" }}
+                  fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
+                </svg>
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  placeholder="記録を検索…"
+                  className="w-full pl-9 pr-4 py-2 rounded-2xl text-sm font-light outline-none transition-all"
+                  style={{
+                    backgroundColor: "var(--bg-card)",
+                    border: "1px solid var(--border)",
+                    color: "var(--text-main)",
+                  }}
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery("")}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-xs"
+                    style={{ color: "var(--text-faint)" }}
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+            )}
+
             {/* 感情フィルター（D-1） */}
             {entries.length > 0 && (() => {
               const availableEmotions = Array.from(
@@ -635,11 +668,19 @@ export default function Home() {
 
             {/* 記録一覧 */}
             {(() => {
-              const filteredEntries = filterKey === null
-                ? entries
-                : filterKey === "✦"
-                  ? entries.filter(e => e.isFavorited)
-                  : entries.filter(e => e.emotions?.some(em => em.label === filterKey));
+              const q = searchQuery.trim().toLowerCase();
+              const filteredEntries = entries
+                .filter(e =>
+                  filterKey === null ? true
+                  : filterKey === "✦" ? e.isFavorited
+                  : e.emotions?.some(em => em.label === filterKey)
+                )
+                .filter(e =>
+                  q === "" ? true
+                  : (e.content?.toLowerCase().includes(q) ||
+                     e.comment?.toLowerCase().includes(q) ||
+                     e.note?.toLowerCase().includes(q))
+                );
               return filteredEntries.length > 0 ? (
               <div className="space-y-4">
                 {filteredEntries.map((entry) => (
@@ -822,7 +863,7 @@ export default function Home() {
               </div>
             ) : (
               !loading && (
-                filterKey !== null ? (
+                filterKey !== null || searchQuery ? (
                   <div className="text-center py-12">
                     <p className="text-sm" style={{ color: "var(--text-subtle)" }}>該当する記録はありません</p>
                   </div>
