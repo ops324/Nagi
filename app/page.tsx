@@ -129,20 +129,65 @@ export default function Home() {
     return () => { clearTimeout(t1); clearTimeout(t2); };
   }, [loading]);
 
-  // 時刻に基づくライト/ダークモード切替（6〜18時: ライト、18〜6時: ダーク）
+  // 時刻・季節に基づくテーマ切替（v1.41）
+  // 時刻4区分: 朝06–10 / 昼10–17 / 夕17–19 / 夜19–06
+  // 季節4種: 春3–5 / 夏6–8 / 秋9–11 / 冬12–2
   useEffect(() => {
+    const TIME_CLASSES = ["time-morning", "time-day", "time-evening", "time-night"] as const;
+    const SEASON_CLASSES = ["season-spring", "season-summer", "season-autumn", "season-winter"] as const;
+
     const applyTheme = () => {
-      const h = new Date().getHours();
-      if (h >= 18 || h < 6) {
-        document.documentElement.classList.add("dark");
-      } else {
-        document.documentElement.classList.remove("dark");
-      }
+      const now = new Date();
+      const h = now.getHours();
+      const m = now.getMonth() + 1; // 1-12
+      const root = document.documentElement;
+
+      // light/dark
+      const isNight = h >= 19 || h < 6;
+      root.classList.toggle("dark", isNight);
+
+      // 時刻クラス（既存を全消去してから付与）
+      const timeClass =
+        h >= 6 && h < 10  ? "time-morning" :
+        h >= 10 && h < 17 ? "time-day"     :
+        h >= 17 && h < 19 ? "time-evening" :
+                            "time-night";
+      TIME_CLASSES.forEach(c => root.classList.remove(c));
+      root.classList.add(timeClass);
+
+      // 季節クラス
+      const seasonClass =
+        m >= 3 && m <= 5  ? "season-spring" :
+        m >= 6 && m <= 8  ? "season-summer" :
+        m >= 9 && m <= 11 ? "season-autumn" :
+                            "season-winter";
+      SEASON_CLASSES.forEach(c => root.classList.remove(c));
+      root.classList.add(seasonClass);
     };
+
     applyTheme();
     const timer = setInterval(applyTheme, 60_000);
     return () => clearInterval(timer);
   }, []);
+
+  // スワイプでタブ切替（journal ↔ calendar）
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+  const handleTouchStart = (e: React.TouchEvent) => {
+    const t = e.touches[0];
+    touchStartRef.current = { x: t.clientX, y: t.clientY };
+  };
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    const start = touchStartRef.current;
+    if (!start) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - start.x;
+    const dy = t.clientY - start.y;
+    touchStartRef.current = null;
+    // 横方向の動きが垂直の1.5倍以上 かつ 60px以上のときのみ発火
+    if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+    if (dx < 0 && tab === "journal")  setTab("calendar");
+    if (dx > 0 && tab === "calendar") setTab("journal");
+  };
 
   const handleSubmit = async () => {
     if (!content.trim()) return;
@@ -271,7 +316,12 @@ export default function Home() {
   ];
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: "var(--bg)" }}>
+    <div
+      className="min-h-screen min-h-dvh"
+      style={{ backgroundColor: "var(--bg)" }}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+    >
 
       {/* ── Header ── */}
       <header className="sticky top-0 z-10"
@@ -292,36 +342,48 @@ export default function Home() {
             <div className="flex items-center gap-2">
               {isAdmin && (
                 <a href="/admin"
-                  className="flex items-center justify-center w-8 h-8 rounded-full transition-colors"
-                  style={{ border: "1px solid var(--border)", color: "var(--text-muted)" }}
-                  title="管理">
-                  <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="1" y="1" width="6" height="6" rx="1.5"/>
-                    <rect x="9" y="1" width="6" height="6" rx="1.5"/>
-                    <rect x="1" y="9" width="6" height="6" rx="1.5"/>
-                    <rect x="9" y="9" width="6" height="6" rx="1.5"/>
-                  </svg>
+                  className="flex items-center justify-center w-11 h-11 rounded-full transition-colors"
+                  style={{ color: "var(--text-muted)" }}
+                  title="管理"
+                  aria-label="管理者ダッシュボード">
+                  <span className="flex items-center justify-center w-8 h-8 rounded-full"
+                    style={{ border: "1px solid var(--border)" }}>
+                    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="1" y="1" width="6" height="6" rx="1.5"/>
+                      <rect x="9" y="1" width="6" height="6" rx="1.5"/>
+                      <rect x="1" y="9" width="6" height="6" rx="1.5"/>
+                      <rect x="9" y="9" width="6" height="6" rx="1.5"/>
+                    </svg>
+                  </span>
                 </a>
               )}
               {userEmail && (
                 <a href="/account"
-                  className="flex items-center justify-center w-8 h-8 rounded-full transition-colors"
-                  style={{ border: "1px solid var(--border)", color: "var(--text-muted)" }}
-                  title="設定・ログアウト">
-                  <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-                    <circle cx="8" cy="5.5" r="2.5"/>
-                    <path d="M2.5 14c0-2.76 2.46-5 5.5-5s5.5 2.24 5.5 5"/>
-                  </svg>
+                  className="flex items-center justify-center w-11 h-11 rounded-full transition-colors"
+                  style={{ color: "var(--text-muted)" }}
+                  title="設定・ログアウト"
+                  aria-label="アカウント設定">
+                  <span className="flex items-center justify-center w-8 h-8 rounded-full"
+                    style={{ border: "1px solid var(--border)" }}>
+                    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                      <circle cx="8" cy="5.5" r="2.5"/>
+                      <path d="M2.5 14c0-2.76 2.46-5 5.5-5s5.5 2.24 5.5 5"/>
+                    </svg>
+                  </span>
                 </a>
               )}
             </div>
           </div>
 
           {/* タブ */}
-          <div className="flex gap-5 mt-4">
+          <div className="flex gap-5 mt-4" role="tablist" aria-label="表示切替">
             {TAB_LABELS.map(({ key, label }) => (
               <button
                 key={key}
+                role="tab"
+                aria-selected={tab === key}
+                aria-controls={`panel-${key}`}
+                id={`tab-${key}`}
                 onClick={() => setTab(key)}
                 className="pb-3 text-xs tracking-widest transition-colors"
                 style={{
@@ -342,7 +404,7 @@ export default function Home() {
             記録タブ
         ══════════════════════════════ */}
         {tab === "journal" && (
-          <>
+          <div role="tabpanel" id="panel-journal" aria-labelledby="tab-journal" className="space-y-5">
             {/* 入力エリア */}
             <div className="rounded-3xl p-[27px] shadow-sm"
               style={{ backgroundColor: "var(--bg-card)", border: "1px solid var(--border)" }}>
@@ -357,7 +419,7 @@ export default function Home() {
                     <div className="loading-ring" style={{ animationDelay: "0.87s" }} />
                     <div className="loading-ring" style={{ animationDelay: "1.73s" }} />
                     <div className="w-2 h-2 rounded-full flex-shrink-0"
-                      style={{ backgroundColor: "#6ee7b7", opacity: 0.7 }} />
+                      style={{ backgroundColor: "var(--green)", opacity: 0.7 }} />
                   </div>
 
                   {/* フェーズテキスト */}
@@ -377,6 +439,7 @@ export default function Home() {
                     color: "var(--text-primary)",
                     backgroundColor: "transparent",
                   }}
+                  aria-label="今日の記録"
                 />
               )}
 
@@ -397,7 +460,7 @@ export default function Home() {
                     disabled={!content.trim()}
                     className="px-7 py-2.5 rounded-full text-xs tracking-widest transition-all"
                     style={{
-                      backgroundColor: !content.trim() ? "var(--bg-disabled)" : "#6ee7b7",
+                      backgroundColor: !content.trim() ? "var(--bg-disabled)" : "var(--green)",
                       color:           !content.trim() ? "var(--text-disabled)" : "#065f46",
                       cursor:          !content.trim() ? "not-allowed" : "pointer",
                     }}
@@ -434,17 +497,17 @@ export default function Home() {
                       <div className="flex items-center justify-between">
                         <time className="text-xs" style={{ color: "var(--text-muted)" }}>{fmtDate(entry.createdAt)}</time>
                         {deletingId === entry.id ? (
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2" role="group" aria-live="polite" aria-label="削除確認">
                             <button
                               onClick={() => handleDelete(entry.id)}
-                              className="text-xs tracking-widest px-3 py-1 rounded-full transition-colors"
+                              className="text-xs tracking-widest px-4 py-2 rounded-full transition-colors"
                               style={{ backgroundColor: "#fca5a530", color: "#ef4444", border: "1px solid #fca5a5" }}
                             >
                               削除する
                             </button>
                             <button
                               onClick={() => setDeletingId(null)}
-                              className="text-xs tracking-widest px-3 py-1 rounded-full"
+                              className="text-xs tracking-widest px-4 py-2 rounded-full"
                               style={{ color: "var(--text-muted)", border: "1px solid var(--border)" }}
                             >
                               やめる
@@ -453,9 +516,9 @@ export default function Home() {
                         ) : (
                           <button
                             onClick={() => setDeletingId(entry.id)}
-                            className="flex items-center justify-center w-7 h-7 rounded-full transition-colors hover:bg-black/5"
+                            className="flex items-center justify-center w-11 h-11 -mr-2 rounded-full transition-colors hover:bg-black/5"
                             style={{ color: "var(--text-muted)" }}
-                            aria-label="メニュー"
+                            aria-label="この記録のメニュー"
                           >
                             <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
                               <circle cx="3" cy="8" r="1.5" />
@@ -583,14 +646,14 @@ export default function Home() {
                 </div>
               )
             )}
-          </>
+          </div>
         )}
 
         {/* ══════════════════════════════
             カレンダータブ
         ══════════════════════════════ */}
         {tab === "calendar" && (
-          <>
+          <div role="tabpanel" id="panel-calendar" aria-labelledby="tab-calendar">
             <EmotionCalendar
               entries={entries}
               onNavigateToEntry={navigateToEntry}
@@ -602,7 +665,7 @@ export default function Home() {
               </div>
             )}
 
-          </>
+          </div>
         )}
 
 

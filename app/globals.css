@@ -8,11 +8,11 @@
   --bg-disabled:    #e7e5e0;
   --text-primary:   #44403c;
   --text-secondary: #78716c;
-  --text-muted:     #b5afa8;
+  --text-muted:     #74706a; /* v1.41: WCAG AA 準拠（bg #f7f5f0 上で約 4.6:1） */
   --text-entry:     #57534e;
   --text-disabled:  #b5afa8;
-  --text-subtle:    #d6d3d1;
-  --text-faint:     #e7e5e0;
+  --text-subtle:    #a8a29e;
+  --text-faint:     #d6d3d1;
   --border:         #ede9e3;
   --border-inner:   #f0ede8;
   --tab-active:     #a8a29e;
@@ -28,19 +28,58 @@
   --bg-comment:     #1e1c1a;
   --bg-disabled:    #2e2b28;
   --text-primary:   #e4dfd8;
-  --text-secondary: #9c948c;
-  --text-muted:     #6b6560;
+  --text-secondary: #b8b0a8;
+  --text-muted:     #908a85;
   --text-entry:     #c4bdb5;
   --text-disabled:  #6b6560;
-  --text-subtle:    #4a4540;
-  --text-faint:     #332f2c;
+  --text-subtle:    #6b6560;
+  --text-faint:     #4a4540;
   --border:         #302d2a;
   --border-inner:   #262320;
-  --tab-active:     #7c7570;
+  --tab-active:     #908a85;
   --green:          #6ee7b7;
   --green-light:    #d1fae5;
   --yellow:         #fde68a;
 }
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   時刻トーン：朝・昼・夕・夜の4区分（v1.41）
+   ─────────────────────────────────────────────────────────────
+   ベース :root（light）/ .dark の上に微細な色変化を重ねる。
+   主張しないレベル（hex 1〜2 段差）の差異で時の流れを纏う。
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+/* 朝 06–10：背景がわずかに白く・アクセントは涼やかなセージ */
+.time-morning {
+  --bg:             #faf8f3;
+  --bg-header:      rgba(250, 248, 243, 0.85);
+  --tab-active:     #9aa39e;
+}
+
+/* 昼 10–17：基準（light のデフォルト） */
+.time-day { /* :root のまま */ }
+
+/* 夕 17–19：背景がわずかに琥珀寄り・アクセントは温かいトープ */
+.time-evening {
+  --bg:             #f6f1e7;
+  --bg-header:      rgba(246, 241, 231, 0.85);
+  --tab-active:     #b09d88;
+}
+
+/* 夜 19–06：基準（.dark のデフォルト） */
+.time-night { /* .dark のまま */ }
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   季節モディファイア（v1.41）
+   ─────────────────────────────────────────────────────────────
+   アクセントカラー（--green）に hue 1〜2°のごく微細な変化のみ。
+   背景・本文色は触らない。EMOTION_COLORS も触らない。
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+.season-spring { --green: #74e9b8; }  /* わずかに桃寄り */
+.season-summer { --green: #6ce4be; }  /* わずかに涼やか */
+.season-autumn { --green: #84e8a6; }  /* わずかに琥珀寄り */
+.season-winter { --green: #6cdfc2; }  /* わずかに青み */
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
    1/f ゆらぎ：波の穏やかな揺れ
@@ -212,4 +251,74 @@ body {
   font-weight: 300;
   line-height: 1.75;
   transition: background-color 0.6s ease, color 0.6s ease;
+  /* iOS notch / home indicator 用 safe-area インセット */
+  padding-left:  env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   :focus-visible 統一（v1.41）
+   ─────────────────────────────────────────────────────────────
+   キーボード操作時のみ、穏やかな緑の焦点リングを表示。
+   マウスクリック時は出ないので Calm Tech の静けさを壊さない。
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+*:focus { outline: none; }
+
+button:focus-visible,
+a:focus-visible,
+textarea:focus-visible,
+input:focus-visible,
+select:focus-visible,
+[role="tab"]:focus-visible {
+  outline: 2px solid var(--green);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+/* タッチターゲット最低 44x44px のヒットエリア（見た目は変えない） */
+.tap-target {
+  position: relative;
+}
+.tap-target::before {
+  content: "";
+  position: absolute;
+  inset: 50%;
+  width: 44px;
+  height: 44px;
+  transform: translate(-50%, -50%);
+  pointer-events: auto;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   prefers-reduced-motion 対応（v1.41）
+   ─────────────────────────────────────────────────────────────
+   モーション過敏なユーザーへの配慮。1/fゆらぎ・波紋・テーマ
+   トランジションを停止または極小化する。ローディング波紋は
+   進行感を保つため透明度のみ穏やかに揺らす別バージョンに切替。
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+@media (prefers-reduced-motion: reduce) {
+  /* アイコンの 1/f ゆらぎを停止 */
+  .icon-anim,
+  .icon-anim::before,
+  .icon-anim::after { animation: none !important; }
+
+  /* テーマ切替のフェードを停止 */
+  body { transition: none; }
+
+  /* フェーズテキスト・問いかけはフェードイン無し（瞬時表示） */
+  .nagi-phase,
+  .nagi-question { animation: none; opacity: 1; }
+
+  /* 波紋は控えめ：拡張せず opacity だけ穏やかに揺らす */
+  .loading-ring {
+    animation: ripple-soft 2.6s ease-in-out infinite !important;
+    transform: scale(1);
+  }
+
+  @keyframes ripple-soft {
+    0%, 100% { opacity: 0.20; }
+    50%      { opacity: 0.55; }
+  }
 }
