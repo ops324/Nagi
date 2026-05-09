@@ -74,6 +74,9 @@ export default function Home() {
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [savedNoteIds, setSavedNoteIds] = useState<Set<string>>(new Set());
   const noteTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  const [filterKey, setFilterKey] = useState<string | null>(null);
+  const [weeklySummary, setWeeklySummary] = useState<string | null>(null);
+  const [weeklyLoading, setWeeklyLoading] = useState(false);
 
   useEffect(() => {
     const supabase = createClient();
@@ -109,6 +112,7 @@ export default function Home() {
           createdAt:    e.created_at,
           insightLevel: e.insight_level,
           note:         e.note ?? "",
+          isFavorited:  e.is_favorited ?? false,
         })) as Entry[]);
         // 余韻メモを notes state に初期化
         const initialNotes: Record<string, string> = {};
@@ -119,6 +123,8 @@ export default function Home() {
 
     loadUser();
     loadEntries();
+    const draft = localStorage.getItem("nagi-draft");
+    if (draft) setContent(draft);
   }, []);
 
   // ローディング中のフェーズサイクル
@@ -199,6 +205,7 @@ export default function Home() {
       setExpandedIds((prev) => new Set(prev).add(entry.id));
       setNewEntryId(entry.id);
       setTimeout(() => setNewEntryId(null), 4000);
+      localStorage.removeItem("nagi-draft");
       setContent("");
     } catch {
       setError("通信エラーが発生しました");
@@ -226,6 +233,73 @@ export default function Home() {
     }, 800);
 
     noteTimersRef.current.set(id, timer);
+  };
+
+  const handleContentChange = (value: string) => {
+    setContent(value);
+    if (value) localStorage.setItem("nagi-draft", value);
+    else localStorage.removeItem("nagi-draft");
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+      e.preventDefault();
+      if (content.trim() && !loading) handleSubmit();
+    }
+  };
+
+  const handleToggleFavorite = async (id: string) => {
+    const entry = entries.find(e => e.id === id);
+    if (!entry) return;
+    const next = !entry.isFavorited;
+    const supabase = createClient();
+    await supabase.from("entries").update({ is_favorited: next }).eq("id", id);
+    setEntries(prev => prev.map(e => e.id === id ? { ...e, isFavorited: next } : e));
+  };
+
+  const getMemoryEntry = (): { entry: Entry; label: string } | null => {
+    const now = new Date();
+    const targets = [
+      { months: 12, label: "1年前の今日" },
+      { months: 6,  label: "半年前の今日" },
+      { months: 1,  label: "ひと月前の今日" },
+    ];
+    for (const { months, label } of targets) {
+      const target = new Date(now);
+      target.setMonth(target.getMonth() - months);
+      const found = entries.find(e => {
+        const d = new Date(e.createdAt);
+        return d.getFullYear() === target.getFullYear()
+            && d.getMonth()    === target.getMonth()
+            && d.getDate()     === target.getDate();
+      });
+      if (found) return { entry: found, label };
+    }
+    return null;
+  };
+
+  const handleWeeklySummary = async () => {
+    if (weeklyLoading || weeklySummary) return;
+    const now = new Date();
+    const weekStart = new Date(now);
+    weekStart.setDate(now.getDate() - now.getDay());
+    weekStart.setHours(0, 0, 0, 0);
+    const thisWeekEntries = entries.filter(e => new Date(e.createdAt) >= weekStart);
+    if (thisWeekEntries.length === 0) return;
+    setWeeklyLoading(true);
+    try {
+      const res = await fetch("/api/weekly-summary", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ entries: thisWeekEntries }),
+      });
+      const data = await res.json();
+      if (res.ok) setWeeklySummary(data.summary);
+    } catch {
+      // silent
+    } finally {
+      setWeeklyLoading(false);
+    }
   };
 
   const handleDelete = async (id: string) => {
@@ -391,7 +465,8 @@ export default function Home() {
               ) : (
                 <textarea
                   value={content}
-                  onChange={(e) => setContent(e.target.value)}
+                  onChange={(e) => handleContentChange(e.target.value)}
+                  onKeyDown={handleKeyDown}
                   placeholder={"今日、どんなことがありましたか。\nうまく言葉にならなくても、大丈夫です。"}
                   className="w-full h-40 text-sm resize-none outline-none leading-relaxed"
                   style={{
@@ -430,10 +505,144 @@ export default function Home() {
               )}
             </div>
 
+            {/* あの日の凪（A-1） */}
+            {(() => {
+              const memory = getMemoryEntry();
+              if (!memory) return null;
+              return (
+                <button
+                  onClick={() => navigateToEntry(memory.entry)}
+                  className="w-full text-left rounded-3xl p-[22px] transition-opacity"
+                  style={{
+                    backgroundColor: "var(--bg-card)",
+                    border: "1px dashed var(--border)",
+                    opacity: 0.75,
+                  }}
+                  aria-label={`${memory.label}の記録を見る`}
+                >
+                  <p className="text-xs tracking-widest mb-3" style={{ color: "var(--text-faint)" }}>{memory.label}</p>
+                  {memory.entry.emotions?.length > 0 && (
+                    <div className="h-px rounded-full w-full mb-3"
+                      style={{ background: emotionGradient(memory.entry.emotions) }} />
+                  )}
+                  <p className="text-sm leading-relaxed overflow-hidden"
+                    style={{
+                      color: "var(--text-muted)",
+                      display: "-webkit-box",
+                      WebkitLineClamp: 3,
+                      WebkitBoxOrient: "vertical",
+                    }}>
+                    {memory.entry.content}
+                  </p>
+                </button>
+              );
+            })()}
+
+            {/* 今週の凪（A-2） */}
+            {(() => {
+              const now = new Date();
+              const weekStart = new Date(now);
+              weekStart.setDate(now.getDate() - now.getDay());
+              weekStart.setHours(0, 0, 0, 0);
+              const thisWeekCount = entries.filter(e => new Date(e.createdAt) >= weekStart).length;
+              if (thisWeekCount < 3 && !weeklySummary) return null;
+              return (
+                <div className="rounded-3xl p-[22px]"
+                  style={{ backgroundColor: "var(--bg-card)", border: "1px solid var(--border)" }}>
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-xs tracking-widest" style={{ color: "var(--text-muted)" }}>今週の凪</span>
+                    <div className="flex-1 h-px" style={{ backgroundColor: "var(--border-inner)" }} />
+                  </div>
+                  {weeklySummary ? (
+                    <p className="text-sm leading-relaxed"
+                      style={{
+                        color: "var(--text-secondary)",
+                        fontStyle: "italic",
+                        borderLeft: "2px solid color-mix(in srgb, var(--green) 60%, transparent)",
+                        paddingLeft: "12px",
+                      }}>
+                      {weeklySummary}
+                    </p>
+                  ) : (
+                    <button
+                      onClick={handleWeeklySummary}
+                      disabled={weeklyLoading}
+                      className="text-xs tracking-widest transition-opacity"
+                      style={{ color: "var(--text-muted)", opacity: weeklyLoading ? 0.5 : 1 }}
+                    >
+                      {weeklyLoading ? "読んでいます…" : "今週のことばを聞く"}
+                    </button>
+                  )}
+                </div>
+              );
+            })()}
+
+            {/* 感情フィルター（D-1） */}
+            {entries.length > 0 && (() => {
+              const availableEmotions = Array.from(
+                new Set(entries.flatMap(e => e.emotions?.map(em => em.label) ?? []))
+              );
+              const hasFavorites = entries.some(e => e.isFavorited);
+              if (availableEmotions.length === 0 && !hasFavorites) return null;
+              return (
+                <div className="overflow-x-auto pb-1 -mx-1 px-1">
+                  <div className="flex gap-2 w-max">
+                    <button
+                      onClick={() => setFilterKey(null)}
+                      className="text-xs px-3 py-1.5 rounded-full transition-all flex-shrink-0"
+                      style={{
+                        border: `1px solid ${filterKey === null ? "var(--tab-active)" : "var(--border)"}`,
+                        color: filterKey === null ? "var(--tab-active)" : "var(--text-muted)",
+                        backgroundColor: filterKey === null ? "color-mix(in srgb, var(--tab-active) 10%, transparent)" : "transparent",
+                      }}
+                    >
+                      すべて
+                    </button>
+                    {availableEmotions.map(label => (
+                      <button
+                        key={label}
+                        onClick={() => setFilterKey(filterKey === label ? null : label)}
+                        className="text-xs px-3 py-1.5 rounded-full transition-all flex-shrink-0 flex items-center gap-1.5"
+                        style={{
+                          border: `1px solid ${filterKey === label ? (EMOTION_COLORS[label] || "#6ee7b7") : "var(--border)"}`,
+                          color: filterKey === label ? (EMOTION_COLORS[label] || "#6ee7b7") : "var(--text-muted)",
+                          backgroundColor: filterKey === label ? (EMOTION_COLORS[label] || "#6ee7b7") + "18" : "transparent",
+                          opacity: filterKey !== null && filterKey !== label ? 0.5 : 1,
+                        }}
+                      >
+                        <span className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                          style={{ backgroundColor: EMOTION_COLORS[label] || "#6ee7b7" }} />
+                        {label}
+                      </button>
+                    ))}
+                    {hasFavorites && (
+                      <button
+                        onClick={() => setFilterKey(filterKey === "✦" ? null : "✦")}
+                        className="text-xs px-3 py-1.5 rounded-full transition-all flex-shrink-0"
+                        style={{
+                          border: `1px solid ${filterKey === "✦" ? "var(--tab-active)" : "var(--border)"}`,
+                          color: filterKey === "✦" ? "var(--tab-active)" : "var(--text-muted)",
+                          backgroundColor: filterKey === "✦" ? "color-mix(in srgb, var(--tab-active) 10%, transparent)" : "transparent",
+                        }}
+                      >
+                        ✦ お気に入り
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
+
             {/* 記録一覧 */}
-            {entries.length > 0 ? (
+            {(() => {
+              const filteredEntries = filterKey === null
+                ? entries
+                : filterKey === "✦"
+                  ? entries.filter(e => e.isFavorited)
+                  : entries.filter(e => e.emotions?.some(em => em.label === filterKey));
+              return filteredEntries.length > 0 ? (
               <div className="space-y-4">
-                {entries.map((entry) => (
+                {filteredEntries.map((entry) => (
                   <article
                     key={entry.id}
                     id={`entry-${entry.id}`}
@@ -549,15 +758,34 @@ export default function Home() {
                         </button>
                         {expandedIds.has(entry.id) && (
                           <>
-                            <p className="text-sm leading-relaxed mt-3"
-                              style={{
-                                color: "var(--text-secondary)",
-                                fontStyle: "italic",
-                                borderLeft: entry.insightLevel === "deep" ? "2px solid var(--tab-active)" : undefined,
-                                paddingLeft: entry.insightLevel === "deep" ? "12px" : undefined,
-                              }}>
-                              {entry.comment}
-                            </p>
+                            <div className="flex items-start gap-2 mt-3">
+                              <p className="text-sm leading-relaxed flex-1"
+                                style={{
+                                  color: "var(--text-secondary)",
+                                  fontStyle: "italic",
+                                  borderLeft: entry.insightLevel === "deep" ? "2px solid var(--tab-active)" : undefined,
+                                  paddingLeft: entry.insightLevel === "deep" ? "12px" : undefined,
+                                }}>
+                                {entry.comment}
+                              </p>
+                              <button
+                                onClick={() => handleToggleFavorite(entry.id)}
+                                className="flex-shrink-0 mt-0.5 transition-all"
+                                style={{
+                                  color: entry.isFavorited ? "var(--tab-active)" : "var(--text-faint)",
+                                  transform: "none",
+                                  transition: "color 0.6s ease, transform 0.2s ease",
+                                  fontSize: "14px",
+                                  lineHeight: 1,
+                                  padding: "2px 4px",
+                                }}
+                                aria-label={entry.isFavorited ? "ことばを手放す" : "ことばを残す"}
+                                onMouseDown={e => { (e.currentTarget as HTMLButtonElement).style.transform = "scale(1.4)"; }}
+                                onMouseUp={e => { (e.currentTarget as HTMLButtonElement).style.transform = "scale(1)"; }}
+                              >
+                                ✦
+                              </button>
+                            </div>
 
                             {/* 余韻メモ */}
                             <div className="mt-4">
@@ -594,17 +822,24 @@ export default function Home() {
               </div>
             ) : (
               !loading && (
-                <div className="text-center py-16">
-                  <div className="w-10 h-10 mx-auto mb-4 rounded-2xl overflow-hidden opacity-40">
-                    <img src="/icon-nagi.png" alt="Nagi" className="w-10 h-10 block" />
+                filterKey !== null ? (
+                  <div className="text-center py-12">
+                    <p className="text-sm" style={{ color: "var(--text-subtle)" }}>該当する記録はありません</p>
                   </div>
-                  <p className="text-sm" style={{ color: "var(--text-subtle)" }}>まだ記録がありません</p>
-                  <p className="text-xs mt-2 leading-relaxed" style={{ color: "var(--text-faint)" }}>
-                    はじめての記録をすると、凪からことばが届きます
-                  </p>
-                </div>
+                ) : (
+                  <div className="text-center py-16">
+                    <div className="w-10 h-10 mx-auto mb-4 rounded-2xl overflow-hidden opacity-40">
+                      <img src="/icon-nagi.png" alt="Nagi" className="w-10 h-10 block" />
+                    </div>
+                    <p className="text-sm" style={{ color: "var(--text-subtle)" }}>まだ記録がありません</p>
+                    <p className="text-xs mt-2 leading-relaxed" style={{ color: "var(--text-faint)" }}>
+                      はじめての記録をすると、凪からことばが届きます
+                    </p>
+                  </div>
+                )
               )
-            )}
+            );
+            })()}
           </div>
         )}
 

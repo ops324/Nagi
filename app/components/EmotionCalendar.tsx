@@ -151,7 +151,25 @@ export default function EmotionCalendar({ entries, onNavigateToEntry }: Props) {
       {/* ── グラフ ── */}
       <div className="rounded-3xl p-6 shadow-sm"
         style={{ backgroundColor: "var(--bg-card)", border: "1px solid var(--border)" }}>
-        <p className="text-sm font-light tracking-wide mb-5" style={{ color: textColor }}>最近の心の動き</p>
+        {/* C-2: エネルギー統計ミニサマリー */}
+        {(() => {
+          const thisMonthEntries = entries.filter(e => {
+            const d = new Date(e.createdAt);
+            return d.getFullYear() === year && d.getMonth() === month;
+          });
+          if (thisMonthEntries.length === 0) return (
+            <p className="text-sm font-light tracking-wide mb-5" style={{ color: textColor }}>最近の心の動き</p>
+          );
+          const avg = (thisMonthEntries.reduce((s, e) => s + (e.energy ?? 5), 0) / thisMonthEntries.length).toFixed(1);
+          return (
+            <div className="flex items-center justify-between mb-5">
+              <p className="text-sm font-light tracking-wide" style={{ color: textColor }}>最近の心の動き</p>
+              <p className="text-xs tracking-widest" style={{ color: mutedColor }}>
+                {month + 1}月 · {thisMonthEntries.length}記録 · エネルギー平均 {avg}
+              </p>
+            </div>
+          );
+        })()}
         {chartData.length > 0 ? (
           <ResponsiveContainer width="100%" height={140}>
             <AreaChart data={chartData} margin={{ top: 5, right: 5, left: -30, bottom: 0 }} onClick={handleChartClick} style={{ cursor: "pointer" }}>
@@ -281,6 +299,43 @@ export default function EmotionCalendar({ entries, onNavigateToEntry }: Props) {
             );
           })}
         </div>
+
+        {/* C-1: 曜日別感情パターン */}
+        {(() => {
+          const DOW_LABELS = ["日","月","火","水","木","金","土"];
+          const countMap: Record<number, Record<string, number>> = {};
+          for (let i = 0; i < 7; i++) countMap[i] = {};
+          entries.forEach(e => {
+            const dow = new Date(e.createdAt).getDay();
+            const label = e.dominant;
+            countMap[dow][label] = (countMap[dow][label] || 0) + 1;
+          });
+          const dominantByDow = DOW_LABELS.map((_, i) => {
+            const m = countMap[i];
+            if (Object.keys(m).length === 0) return null;
+            return Object.entries(m).reduce((a, b) => b[1] > a[1] ? b : a)[0];
+          });
+          const hasAny = dominantByDow.some(d => d !== null);
+          if (!hasAny) return null;
+          return (
+            <div className="mt-6 pt-4" style={{ borderTop: "1px solid var(--border-inner)" }}>
+              <p className="text-xs tracking-widest mb-3" style={{ color: mutedColor }}>曜日の傾向</p>
+              <div className="grid grid-cols-7 text-center gap-y-1">
+                {DOW_LABELS.map((d, i) => (
+                  <div key={d} className="flex flex-col items-center gap-1">
+                    <span className="text-[10px]" style={{ color: i === 0 ? "#fca5a5" : i === 6 ? "#93c5fd" : mutedColor }}>{d}</span>
+                    <div className="w-4 h-4 rounded-full"
+                      style={{ backgroundColor: dominantByDow[i] ? (EMOTION_COLORS[dominantByDow[i]!] || "#d1fae5") : "var(--border)" }} />
+                    <span className="text-[9px] leading-tight"
+                      style={{ color: dominantByDow[i] ? mutedColor : "var(--border)", wordBreak: "keep-all" }}>
+                      {dominantByDow[i] ?? ""}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
 
         {/* 凡例：色相順グラデーションバー */}
         {(() => {

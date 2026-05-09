@@ -184,3 +184,6 @@ begin
   delete from public.rate_limits where window_start < now() - interval '2 hours';
 end;
 $$ language plpgsql security definer;
+
+-- 14. Nagiのことば お気に入り機能（v1.43.0）
+alter table public.entries add column if not exists is_favorited boolean default false;
