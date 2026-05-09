@@ -13,6 +13,7 @@ export type Entry = {
   createdAt: string;
   insightLevel?: "deep" | "moderate" | "gentle";
   note?: string;
+  isFavorited?: boolean;
 };
 
 // 感情の価値（valence）×彩度で色を設計するパレット
