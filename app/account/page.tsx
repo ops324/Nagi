@@ -30,6 +30,9 @@ export default function AccountPage() {
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
+  // シェア
+  const [shareMsg, setShareMsg] = useState<string | null>(null);
+
   useEffect(() => {
     const loadUser = async () => {
       const { data: claimsData, error } = await supabase.auth.getClaims();
@@ -93,6 +96,20 @@ export default function AccountPage() {
       setConfirmPassword("");
     }
     setPasswordLoading(false);
+  };
+
+  // ── シェア ──────────────────────────────────────────
+  const handleShare = async () => {
+    const url = window.location.origin;
+    const title = "凪";
+    const text = "静かな自己観察の記録アプリ「凪」";
+    if (navigator.share) {
+      await navigator.share({ title, text, url });
+    } else {
+      await navigator.clipboard.writeText(url);
+      setShareMsg("URLをコピーしました");
+      setTimeout(() => setShareMsg(null), 2500);
+    }
   };
 
   // ── アカウント削除 ──────────────────────────────────
@@ -257,6 +274,27 @@ export default function AccountPage() {
               </button>
             </div>
           </form>
+        </section>
+
+        {/* ── 凪をシェア ── */}
+        <section className="rounded-3xl p-6 shadow-sm"
+          style={{ backgroundColor: "var(--bg-card)", border: "1px solid var(--border)" }}>
+          <p className="text-xs tracking-widest mb-2" style={{ color: "var(--text-muted)" }}>凪をシェア</p>
+          <p className="text-xs mb-5 leading-relaxed" style={{ color: "var(--text-muted)" }}>
+            凪のURLを友人・知人に共有できます。
+          </p>
+          <div className="flex items-center gap-4">
+            <button
+              onClick={handleShare}
+              className="px-6 py-2.5 rounded-full text-xs tracking-widest transition-all"
+              style={{ backgroundColor: "#6ee7b7", color: "#065f46", cursor: "pointer" }}
+            >
+              シェアする
+            </button>
+            {shareMsg && (
+              <p className="text-xs" style={{ color: "var(--text-muted)" }}>{shareMsg}</p>
+            )}
+          </div>
         </section>
 
         {/* ── アカウント削除 ── */}
