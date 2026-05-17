@@ -240,6 +240,15 @@
   animation: nagi-q-in 1s ease forwards;
 }
 
+@keyframes welcome-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.welcome-fade-in {
+  animation: welcome-fade-in 0.5s ease both;
+}
+
 * { box-sizing: border-box; }
 
 html { -webkit-font-smoothing: antialiased; }
@@ -296,6 +305,9 @@ select:focus-visible,
   /* フェーズテキスト・問いかけはフェードイン無し（瞬時表示） */
   .nagi-phase,
   .nagi-question { animation: none; opacity: 1; }
+
+  /* ウェルカム画面のフェードイン無し（瞬時表示） */
+  .welcome-fade-in { animation: none; opacity: 1; }
 
   /* 波紋は控えめ：拡張せず opacity だけ穏やかに揺らす */
   .loading-ring {
