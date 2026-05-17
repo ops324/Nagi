@@ -56,6 +56,14 @@ create policy "自分の記録のみ削除可"
   on public.entries for delete
   using (auth.uid() = user_id);
 
+-- 自分の記録のみ更新可（余韻メモ note・お気に入り is_favorited・本文編集で使用）
+-- ※ note / お気に入り機能（v1.43.0）から .update() を使用しているため
+--   既存DBには適用済みの可能性が高い。記載漏れの補完。重複時はスキップ可
+create policy "自分の記録のみ更新可"
+  on public.entries for update
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
 -- 6. 新規ユーザー登録時にprofilesを自動作成するトリガー
 create or replace function public.handle_new_user()
 returns trigger as $$
