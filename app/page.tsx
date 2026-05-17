@@ -6,6 +6,7 @@ import dynamic from "next/dynamic";
 import { Entry, Emotion, EMOTION_COLORS } from "./types";
 import { createClient } from "@/lib/supabase/client";
 import { logout } from "./auth/actions";
+import EntryCard from "./components/EntryCard";
 
 const LOADING_QUESTIONS: Record<"negative" | "positive" | "neutral", string[]> = {
   negative: [
@@ -71,7 +72,6 @@ export default function Home() {
   const [editError, setEditError] = useState("");
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [newEntryId, setNewEntryId] = useState<string | null>(null);
   const [loadingPhase, setLoadingPhase] = useState(0);
   const [loadingQuestion, setLoadingQuestion] = useState<string | null>(null);
@@ -212,7 +212,6 @@ export default function Home() {
         insight_level: entry.insightLevel, // camelCase → snake_case
       });
       setEntries([entry, ...entries]);
-      setExpandedIds((prev) => new Set(prev).add(entry.id));
       setNewEntryId(entry.id);
       setTimeout(() => setNewEntryId(null), 4000);
       localStorage.removeItem("nagi-draft");
@@ -388,14 +387,6 @@ export default function Home() {
     }
   };
 
-  const toggleExpand = (id: string) => {
-    setExpandedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
 
   // カレンダー／グラフから記録タブの該当エントリへナビゲート
   const navigateToEntry = (entry: Entry) => {
@@ -799,122 +790,17 @@ export default function Home() {
                 );
               return filteredEntries.length > 0 ? (
               <div className="space-y-4">
-                {filteredEntries.map((entry) => (
-                  <article
-                    key={entry.id}
-                    id={`entry-${entry.id}`}
-                    className="rounded-3xl overflow-hidden shadow-sm flex"
-                    style={{
-                      backgroundColor: "var(--bg-card)",
-                      border: `1px solid ${highlightedEntryId === entry.id ? "var(--tab-active)" : "var(--border)"}`,
-                      boxShadow: highlightedEntryId === entry.id ? "0 0 0 3px color-mix(in srgb, var(--tab-active) 20%, transparent)" : "none",
-                      transition: "border-color 0.4s ease, box-shadow 0.4s ease",
-                    }}>
-
-                    {/* 左縦線アクセント */}
-                    <div className="flex-shrink-0 w-[3px] self-stretch rounded-l-3xl"
-                      style={{ background: "linear-gradient(to bottom, transparent, var(--border-inner) 30%, var(--border-inner) 70%, transparent)" }} />
-
-                    {/* メインコンテンツ */}
-                    <div className="flex-1 min-w-0 space-y-4 p-[27px]">
-
-                      {/* 日時 + メニュー */}
-                      <div className="flex items-center justify-between">
-                        <time className="text-xs" style={{ color: "var(--text-muted)" }}>{fmtDate(entry.createdAt)}</time>
-                        {deletingId === entry.id ? (
-                          <div className="flex items-center gap-2" role="group" aria-live="polite" aria-label="削除確認">
-                            <button
-                              onClick={() => handleDelete(entry.id)}
-                              className="text-xs tracking-widest px-4 py-2 rounded-full transition-colors"
-                              style={{ backgroundColor: "#fca5a530", color: "#ef4444", border: "1px solid #fca5a5" }}
-                            >
-                              削除する
-                            </button>
-                            <button
-                              onClick={() => setDeletingId(null)}
-                              className="text-xs tracking-widest px-4 py-2 rounded-full"
-                              style={{ color: "var(--text-muted)", border: "1px solid var(--border)" }}
-                            >
-                              やめる
-                            </button>
-                          </div>
-                        ) : editingId === entry.id ? null : (
-                          <div className="relative">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setMenuOpenId(menuOpenId === entry.id ? null : entry.id);
-                              }}
-                              className="flex items-center justify-center w-11 h-11 -mr-2 rounded-full transition-colors hover:bg-black/5"
-                              style={{ color: "var(--text-muted)" }}
-                              aria-label="この記録のメニュー"
-                              aria-haspopup="menu"
-                              aria-expanded={menuOpenId === entry.id}
-                            >
-                              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                                <circle cx="3" cy="8" r="1.5" />
-                                <circle cx="8" cy="8" r="1.5" />
-                                <circle cx="13" cy="8" r="1.5" />
-                              </svg>
-                            </button>
-                            {menuOpenId === entry.id && (
-                              <div
-                                role="menu"
-                                onClick={(e) => e.stopPropagation()}
-                                className="absolute right-0 top-12 z-20 rounded-2xl overflow-hidden shadow-md"
-                                style={{ backgroundColor: "var(--bg-card)", border: "1px solid var(--border)", minWidth: "120px" }}
-                              >
-                                <button
-                                  role="menuitem"
-                                  onClick={() => handleEditStart(entry)}
-                                  className="w-full min-h-[44px] px-5 text-xs tracking-widest text-left transition-colors hover:bg-black/5"
-                                  style={{ color: "var(--text-secondary)" }}
-                                >
-                                  編集する
-                                </button>
-                                <div className="h-px" style={{ backgroundColor: "var(--border)" }} />
-                                <button
-                                  role="menuitem"
-                                  onClick={() => { setMenuOpenId(null); setDeletingId(entry.id); }}
-                                  className="w-full min-h-[44px] px-5 text-xs tracking-widest text-left transition-colors hover:bg-black/5"
-                                  style={{ color: "#ef4444" }}
-                                >
-                                  削除する
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* 感情グラデーション */}
-                      {entry.emotions?.length > 0 && (
-                        <div className="h-px rounded-full w-full"
-                          style={{ background: emotionGradient(entry.emotions) }} />
-                      )}
-
-                      {/* 感情チップ */}
-                      {entry.emotions?.length > 0 && (
-                        <div className="flex gap-1.5 flex-wrap">
-                          {entry.emotions.map((em) => (
-                            <span key={em.label}
-                              className="text-xs px-3 py-1 rounded-full flex items-center gap-1.5"
-                              style={{
-                                backgroundColor: (EMOTION_COLORS[em.label] || "#6ee7b7") + "22",
-                                color: "var(--text-secondary)",
-                                border: "1px solid " + (EMOTION_COLORS[em.label] || "#6ee7b7") + "44",
-                              }}>
-                              <span className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                                style={{ backgroundColor: EMOTION_COLORS[em.label] || "#6ee7b7" }} />
-                              {em.label}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-
-                      {/* 本文 */}
-                      {editingId === entry.id ? (
-                        editSaving ? (
+                {filteredEntries.map((entry) => {
+                  // 編集モード: EntryCard の代わりにインライン編集UIを表示
+                  if (editingId === entry.id) {
+                    return (
+                      <div
+                        key={entry.id}
+                        id={`entry-${entry.id}`}
+                        className="rounded-3xl p-[27px] space-y-4"
+                        style={{ backgroundColor: "var(--bg-card)", border: "1px solid var(--border)" }}
+                      >
+                        {editSaving ? (
                           <div className="h-32 flex flex-col items-center justify-center gap-4">
                             <div className="relative w-12 h-12 flex items-center justify-center flex-shrink-0">
                               <div className="loading-ring" style={{ animationDelay: "0s" }} />
@@ -972,105 +858,93 @@ export default function Home() {
                               })()}
                             </div>
                           </div>
-                        )
-                      ) : (
-                        <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: "var(--text-entry)" }}>
-                          {entry.content}
-                        </p>
-                      )}
-
-                      {/* FROM NAGI — 折りたたみ */}
-                      <div
-                        className={newEntryId === entry.id ? "nagi-comment-highlight" : ""}
-                        style={newEntryId === entry.id ? {
-                          borderRadius: "16px",
-                          padding: "12px",
-                          margin: "-12px",
-                          backgroundColor: "color-mix(in srgb, var(--tab-active) 8%, transparent)",
-                          border: "1px solid color-mix(in srgb, var(--tab-active) 25%, transparent)",
-                          transition: "background-color 1.5s ease, border-color 1.5s ease",
-                        } : undefined}
-                      >
-                        <button
-                          onClick={() => toggleExpand(entry.id)}
-                          className="w-full flex items-center gap-2"
-                          style={{ color: newEntryId === entry.id ? "var(--tab-active)" : "var(--text-muted)" }}
-                        >
-                          <span className="text-xs tracking-widest flex-shrink-0 flex items-center gap-1.5">
-                            {newEntryId === entry.id && (
-                              <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                            )}
-                            FROM NAGI
-                          </span>
-                          <div className="flex-1 h-px"
-                            style={{ backgroundColor: newEntryId === entry.id ? "color-mix(in srgb, var(--tab-active) 40%, transparent)" : "var(--border-inner)" }} />
-                          <span className="text-xs tracking-widest flex-shrink-0">
-                            {expandedIds.has(entry.id) ? "とじる" : "ひらく"}
-                          </span>
-                        </button>
-                        {expandedIds.has(entry.id) && (
-                          <>
-                            <div className="flex items-start gap-2 mt-3">
-                              <p className="text-sm leading-relaxed flex-1"
-                                style={{
-                                  color: "var(--text-secondary)",
-                                  fontStyle: "italic",
-                                  borderLeft: entry.insightLevel === "deep" ? "2px solid var(--tab-active)" : undefined,
-                                  paddingLeft: entry.insightLevel === "deep" ? "12px" : undefined,
-                                }}>
-                                {entry.comment}
-                              </p>
-                              <button
-                                onClick={() => handleToggleFavorite(entry.id)}
-                                className="flex-shrink-0 mt-0.5 transition-all"
-                                style={{
-                                  color: entry.isFavorited ? "var(--tab-active)" : "var(--text-faint)",
-                                  transform: "none",
-                                  transition: "color 0.6s ease, transform 0.2s ease",
-                                  fontSize: "14px",
-                                  lineHeight: 1,
-                                  padding: "2px 4px",
-                                }}
-                                aria-label={entry.isFavorited ? "ことばを手放す" : "ことばを残す"}
-                                onMouseDown={e => { (e.currentTarget as HTMLButtonElement).style.transform = "scale(1.4)"; }}
-                                onMouseUp={e => { (e.currentTarget as HTMLButtonElement).style.transform = "scale(1)"; }}
-                              >
-                                ✦
-                              </button>
-                            </div>
-
-                            {/* 余韻メモ */}
-                            <div className="mt-4">
-                              <div className="flex items-center gap-2 mb-3">
-                                <span className="text-xs tracking-widest flex-shrink-0" style={{ color: "var(--text-muted)" }}>メモ</span>
-                                <div className="flex-1 h-px" style={{ backgroundColor: "var(--border)" }} />
-                              </div>
-                              <textarea
-                                value={notes[entry.id] ?? ""}
-                                onChange={(e) => handleNoteChange(entry.id, e.target.value)}
-                                placeholder="…"
-                                rows={2}
-                                className="w-full text-sm resize-none outline-none leading-relaxed"
-                                style={{
-                                  color: "var(--text-primary)",
-                                  backgroundColor: "transparent",
-                                }}
-                              />
-                              <div className="flex justify-end h-4 mt-1">
-                                {savedNoteIds.has(entry.id) && (
-                                  <span className="text-xs nagi-phase" style={{ color: "var(--text-muted)" }}>
-                                    保存しました
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          </>
                         )}
                       </div>
+                    );
+                  }
 
-                    </div>
-                  </article>
-                ))}
+                  // 通常モード: EntryCard コンポーネント
+                  return (
+                    <EntryCard
+                      key={entry.id}
+                      domId={`entry-${entry.id}`}
+                      entry={{ ...entry, note: notes[entry.id] ?? entry.note ?? "" }}
+                      emotionGradient={emotionGradient}
+                      EMOTION_COLORS={EMOTION_COLORS}
+                      onToggleFavorite={handleToggleFavorite}
+                      onNoteChange={handleNoteChange}
+                      noteSaved={savedNoteIds.has(entry.id)}
+                      highlighted={highlightedEntryId === entry.id}
+                      isNew={newEntryId === entry.id}
+                      menuSlot={
+                        deletingId === entry.id ? (
+                          <div className="flex items-center gap-2" role="group" aria-live="polite" aria-label="削除確認">
+                            <button
+                              onClick={() => handleDelete(entry.id)}
+                              className="text-xs tracking-widest px-4 py-2 rounded-full transition-colors"
+                              style={{ backgroundColor: "#fca5a530", color: "#ef4444", border: "1px solid #fca5a5" }}
+                            >
+                              削除する
+                            </button>
+                            <button
+                              onClick={() => setDeletingId(null)}
+                              className="text-xs tracking-widest px-4 py-2 rounded-full"
+                              style={{ color: "var(--text-muted)", border: "1px solid var(--border)" }}
+                            >
+                              やめる
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="relative">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setMenuOpenId(menuOpenId === entry.id ? null : entry.id);
+                              }}
+                              className="flex items-center justify-center w-11 h-11 -mr-2 rounded-full transition-colors hover:bg-black/5"
+                              style={{ color: "var(--text-muted)" }}
+                              aria-label="この記録のメニュー"
+                              aria-haspopup="menu"
+                              aria-expanded={menuOpenId === entry.id}
+                            >
+                              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                                <circle cx="3" cy="8" r="1.5" />
+                                <circle cx="8" cy="8" r="1.5" />
+                                <circle cx="13" cy="8" r="1.5" />
+                              </svg>
+                            </button>
+                            {menuOpenId === entry.id && (
+                              <div
+                                role="menu"
+                                onClick={(e) => e.stopPropagation()}
+                                className="absolute right-0 top-12 z-20 rounded-2xl overflow-hidden shadow-md"
+                                style={{ backgroundColor: "var(--bg-card)", border: "1px solid var(--border)", minWidth: "120px" }}
+                              >
+                                <button
+                                  role="menuitem"
+                                  onClick={() => handleEditStart(entry)}
+                                  className="w-full min-h-[44px] px-5 text-xs tracking-widest text-left transition-colors hover:bg-black/5"
+                                  style={{ color: "var(--text-secondary)" }}
+                                >
+                                  編集する
+                                </button>
+                                <div className="h-px" style={{ backgroundColor: "var(--border)" }} />
+                                <button
+                                  role="menuitem"
+                                  onClick={() => { setMenuOpenId(null); setDeletingId(entry.id); }}
+                                  className="w-full min-h-[44px] px-5 text-xs tracking-widest text-left transition-colors hover:bg-black/5"
+                                  style={{ color: "#ef4444" }}
+                                >
+                                  削除する
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        )
+                      }
+                    />
+                  );
+                })}
               </div>
             ) : (
               !loading && (

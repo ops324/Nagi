@@ -7,7 +7,7 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // 静的アセットのみ除外。APIルートも認証ミドルウェアの対象に含める
-    "/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|.*\\.(?:png|jpg|jpeg|gif|webp|svg|ico)$).*)",
+    // 静的アセット・previewルートを除外
+    "/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|preview|.*\\.(?:png|jpg|jpeg|gif|webp|svg|ico)$).*)",
   ],
 };
