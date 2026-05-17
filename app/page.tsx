@@ -414,6 +414,15 @@ export default function Home() {
     return () => { clearTimeout(scrollTimer); clearTimeout(clearTimer); };
   }, [highlightedEntryId]);
 
+  const handleShare = async () => {
+    const url = window.location.origin;
+    if (navigator.share) {
+      await navigator.share({ title: "凪", text: "静かな自己観察の記録アプリ「凪」", url });
+    } else {
+      await navigator.clipboard.writeText(url);
+    }
+  };
+
   // 記録メニュー（編集/削除）を外側クリック・Escapeで閉じる
   useEffect(() => {
     if (!menuOpenId) return;
@@ -481,6 +490,22 @@ export default function Home() {
                     </svg>
                   </span>
                 </a>
+              )}
+              {userEmail && (
+                <button
+                  onClick={handleShare}
+                  className="flex items-center justify-center w-11 h-11 rounded-full transition-colors"
+                  style={{ color: "var(--text-muted)", background: "none", border: "none", cursor: "pointer" }}
+                  title="シェア"
+                  aria-label="アプリをシェア">
+                  <span className="flex items-center justify-center w-8 h-8 rounded-full"
+                    style={{ border: "1px solid var(--border)" }}>
+                    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M8 10V2m0 0L5.5 4.5M8 2l2.5 2.5"/>
+                      <path d="M4 7H2.5A1.5 1.5 0 001 8.5v5A1.5 1.5 0 002.5 15h11a1.5 1.5 0 001.5-1.5v-5A1.5 1.5 0 0013.5 7H12"/>
+                    </svg>
+                  </span>
+                </button>
               )}
               {userEmail && (
                 <a href="/account"
