@@ -30,6 +30,7 @@ export default function AccountPage() {
   const [deleteMsg, setDeleteMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showDeletedDialog, setShowDeletedDialog] = useState(false);
 
 
   useEffect(() => {
@@ -118,7 +119,9 @@ export default function AccountPage() {
     }
 
     await supabase.auth.signOut();
-    router.replace("/auth/login");
+    setShowDeleteConfirm(false);
+    setDeleteConfirmText("");
+    setShowDeletedDialog(true);
   };
 
   if (loading) {
@@ -350,6 +353,36 @@ export default function AccountPage() {
                 }}
               >
                 {deleteLoading ? "削除中…" : "削除を実行する"}
+              </button>
+            </div>
+          </div>
+        </Dialog>
+
+        {/* ── 削除完了 Dialog ── */}
+        <Dialog
+          open={showDeletedDialog}
+          onOpenChange={() => {}}
+          title="アカウントを削除しました"
+          description=""
+        >
+          <div className="space-y-5">
+            <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+              これまで凪に記録してくれたこと、ありがとうございました。
+            </p>
+            <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+              あなたが書いた言葉は、すべて静かに消えました。またいつか、言葉を置きたくなったときに。
+            </p>
+            <div className="flex justify-center pt-2">
+              <button
+                onClick={() => router.replace("/auth/login")}
+                className="px-8 py-2.5 rounded-full text-xs tracking-widest transition-all"
+                style={{
+                  backgroundColor: "var(--green)",
+                  color: "var(--color-btn-text)",
+                  cursor: "pointer",
+                }}
+              >
+                ログインページへ
               </button>
             </div>
           </div>
