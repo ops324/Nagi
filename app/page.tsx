@@ -83,6 +83,7 @@ export default function Home() {
   const [searchQuery, setSearchQuery] = useState("");
   const [weeklySummary, setWeeklySummary] = useState<string | null>(null);
   const [weeklyLoading, setWeeklyLoading] = useState(false);
+  const [showWelcome, setShowWelcome] = useState(false);
 
   useEffect(() => {
     const supabase = createClient();
@@ -124,6 +125,9 @@ export default function Home() {
         const initialNotes: Record<string, string> = {};
         data.forEach(e => { initialNotes[e.id] = e.note ?? ""; });
         setNotes(initialNotes);
+      } else {
+        // 記録 0 件 → 初回ウェルカム画面を表示
+        setShowWelcome(true);
       }
     };
 
@@ -1050,26 +1054,8 @@ export default function Home() {
                     <p className="text-sm" style={{ color: "var(--text-subtle)" }}>該当する記録はありません</p>
                   </div>
                 ) : (
-                  <div className="text-center py-16">
-                    <div className="w-10 h-10 mx-auto mb-4 rounded-2xl overflow-hidden opacity-40">
-                      <img src="/icon-nagi.png" alt="Nagi" className="w-10 h-10 block" />
-                    </div>
+                  <div className="text-center py-12">
                     <p className="text-sm" style={{ color: "var(--text-subtle)" }}>まだ記録がありません</p>
-
-                    <p className="text-xs mt-4 leading-loose max-w-[280px] mx-auto"
-                      style={{ color: "var(--text-faint)" }}>
-                      凪は、出来事の良し悪しを決めません。あなたが書いたことばを静かに受けとり、そこにある気持ちをそっと言葉にして返します。
-                    </p>
-
-                    <div className="mt-6 mx-auto max-w-[280px] pt-5"
-                      style={{ borderTop: "1px solid var(--border-inner)" }}>
-                      <p className="text-xs tracking-widest mb-2" style={{ color: "var(--text-muted)" }}>
-                        最初の一歩
-                      </p>
-                      <p className="text-xs leading-loose" style={{ color: "var(--text-faint)" }}>
-                        画面上部の入力欄に、今日のことを少しだけ書いてみてください。うまく言葉にならなくても、そのままで大丈夫です。記録すると、凪からことばが届きます。
-                      </p>
-                    </div>
                   </div>
                 )
               )
@@ -1099,6 +1085,48 @@ export default function Home() {
 
 
       </main>
+
+      {/* ══════════════════════════════
+          初回ウェルカム画面（記録 0 件時）
+      ══════════════════════════════ */}
+      {showWelcome && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="welcome-title"
+          className="fixed inset-0 z-50 flex flex-col items-center justify-center px-6 welcome-fade-in"
+          style={{ backgroundColor: "var(--bg)" }}
+        >
+          <div className="w-14 h-14 mb-6 rounded-2xl overflow-hidden">
+            <img src="/icon-nagi.png" alt="Nagi" className="w-14 h-14 block" />
+          </div>
+          <p id="welcome-title" className="text-sm tracking-widest mb-5"
+            style={{ color: "var(--text-subtle)" }}>凪へ ようこそ</p>
+
+          <p className="text-xs leading-loose max-w-[300px] text-center"
+            style={{ color: "var(--text-faint)" }}>
+            凪は、出来事の良し悪しを決めません。あなたが書いたことばを静かに受けとり、そこにある気持ちをそっと言葉にして返します。
+          </p>
+
+          <div className="mt-6 mx-auto max-w-[300px] pt-5"
+            style={{ borderTop: "1px solid var(--border-inner)" }}>
+            <p className="text-xs tracking-widest mb-2 text-center"
+              style={{ color: "var(--text-muted)" }}>最初の一歩</p>
+            <p className="text-xs leading-loose text-center"
+              style={{ color: "var(--text-faint)" }}>
+              画面上部の入力欄に、今日のことを少しだけ書いてみてください。うまく言葉にならなくても、そのままで大丈夫です。記録すると、凪からことばが届きます。
+            </p>
+          </div>
+
+          <button
+            onClick={() => setShowWelcome(false)}
+            className="mt-10 text-xs tracking-widest px-8 py-3 rounded-full"
+            style={{ backgroundColor: "var(--green)", color: "var(--text-primary)" }}
+          >
+            はじめる
+          </button>
+        </div>
+      )}
     </div>
   );
 }
