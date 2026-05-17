@@ -547,7 +547,7 @@ export default function Home() {
         {tab === "journal" && (
           <div role="tabpanel" id="panel-journal" aria-labelledby="tab-journal" className="space-y-5">
             {/* 入力エリア */}
-            <div className="rounded-3xl p-[27px] shadow-sm"
+            <div className="input-card rounded-3xl p-[27px] shadow-sm"
               style={{ backgroundColor: "var(--bg-card)", border: "1px solid var(--border)" }}>
               <p className="text-xs tracking-widest mb-4" style={{ color: "var(--text-muted)" }}>今日の記録</p>
 

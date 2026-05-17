@@ -293,13 +293,26 @@ body {
 
 button:focus-visible,
 a:focus-visible,
-textarea:focus-visible,
 input:focus-visible,
 select:focus-visible,
 [role="tab"]:focus-visible {
   outline: 2px solid var(--green);
   outline-offset: 3px;
   border-radius: 6px;
+}
+
+/* textarea はカード全体の soft glow で表現（枠なし） */
+textarea:focus-visible { outline: none; }
+textarea { caret-color: var(--green); }
+
+.input-card {
+  transition: box-shadow 0.45s cubic-bezier(0.4, 0, 0.2, 1),
+              border-color 0.45s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.input-card:focus-within {
+  box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--green) 22%, transparent),
+              0 6px 24px color-mix(in srgb, var(--green) 6%, transparent);
+  border-color: color-mix(in srgb, var(--green) 35%, var(--border)) !important;
 }
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
