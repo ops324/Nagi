@@ -612,7 +612,7 @@ export default function Home() {
                     className="px-7 py-2.5 rounded-full text-xs tracking-widest transition-all"
                     style={{
                       backgroundColor: !content.trim() ? "var(--bg-disabled)" : "var(--green)",
-                      color:           !content.trim() ? "var(--text-disabled)" : "#065f46",
+                      color:           !content.trim() ? "var(--text-disabled)" : "var(--color-btn-text)",
                       cursor:          !content.trim() ? "not-allowed" : "pointer",
                     }}
                   >
@@ -962,7 +962,7 @@ export default function Home() {
                                     className="text-xs tracking-widest px-5 py-2 rounded-full transition-all"
                                     style={{
                                       backgroundColor: disabled ? "var(--bg-disabled)" : "var(--green)",
-                                      color:           disabled ? "var(--text-disabled)" : "#065f46",
+                                      color:           disabled ? "var(--text-disabled)" : "var(--color-btn-text)",
                                       cursor:          disabled ? "not-allowed" : "pointer",
                                     }}
                                   >

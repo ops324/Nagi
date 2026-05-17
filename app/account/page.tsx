@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { logout } from "../auth/actions";
+import { Dialog } from "../components/ui/Dialog";
 
 export default function AccountPage() {
   const router = useRouter();
@@ -155,10 +156,11 @@ export default function AccountPage() {
 
           <form onSubmit={handleEmailChange} className="space-y-4">
             <div>
-              <label className="block text-xs tracking-widest mb-2" style={{ color: "var(--text-muted)" }}>
+              <label htmlFor="account-email" className="block text-xs tracking-widest mb-2" style={{ color: "var(--text-muted)" }}>
                 新しいメールアドレス
               </label>
               <input
+                id="account-email"
                 type="email"
                 value={newEmail}
                 onChange={(e) => setNewEmail(e.target.value)}
@@ -172,20 +174,20 @@ export default function AccountPage() {
               />
             </div>
 
-            {emailMsg && (
-              <p className="text-xs" style={{ color: emailMsg.type === "success" ? "#6ee7b7" : "#fca5a5" }}>
-                {emailMsg.text}
-              </p>
-            )}
+            <p role="alert" aria-live="polite" className="text-xs min-h-[1rem]"
+              style={{ color: emailMsg ? (emailMsg.type === "success" ? "var(--green)" : "var(--color-danger)") : "transparent" }}>
+              {emailMsg?.text || "　"}
+            </p>
 
             <div className="flex justify-end">
               <button
                 type="submit"
                 disabled={emailLoading || !newEmail.trim()}
+                aria-disabled={emailLoading || !newEmail.trim()}
                 className="px-6 py-2.5 rounded-full text-xs tracking-widest transition-all"
                 style={{
-                  backgroundColor: emailLoading || !newEmail.trim() ? "var(--bg-disabled)" : "#6ee7b7",
-                  color: emailLoading || !newEmail.trim() ? "var(--text-disabled)" : "#065f46",
+                  backgroundColor: emailLoading || !newEmail.trim() ? "var(--bg-disabled)" : "var(--green)",
+                  color: emailLoading || !newEmail.trim() ? "var(--text-disabled)" : "var(--color-btn-text)",
                   cursor: emailLoading || !newEmail.trim() ? "not-allowed" : "pointer",
                 }}
               >
@@ -202,14 +204,18 @@ export default function AccountPage() {
 
           <form onSubmit={handlePasswordChange} className="space-y-4">
             <div>
-              <label className="block text-xs tracking-widest mb-2" style={{ color: "var(--text-muted)" }}>
+              <label htmlFor="account-new-password" className="block text-xs tracking-widest mb-2" style={{ color: "var(--text-muted)" }}>
                 新しいパスワード
               </label>
+              <p id="account-pw-hint" className="text-xs mb-2" style={{ color: "var(--text-muted)" }}>
+                8文字以上・英字と数字を含めてください
+              </p>
               <input
+                id="account-new-password"
                 type="password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="8文字以上（英字+数字）"
+                aria-describedby="account-pw-hint"
                 className="w-full px-4 py-3 rounded-2xl text-sm outline-none"
                 style={{
                   backgroundColor: "var(--bg)",
@@ -220,10 +226,11 @@ export default function AccountPage() {
             </div>
 
             <div>
-              <label className="block text-xs tracking-widest mb-2" style={{ color: "var(--text-muted)" }}>
+              <label htmlFor="account-confirm-password" className="block text-xs tracking-widest mb-2" style={{ color: "var(--text-muted)" }}>
                 新しいパスワード（確認）
               </label>
               <input
+                id="account-confirm-password"
                 type="password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
@@ -237,20 +244,20 @@ export default function AccountPage() {
               />
             </div>
 
-            {passwordMsg && (
-              <p className="text-xs" style={{ color: passwordMsg.type === "success" ? "#6ee7b7" : "#fca5a5" }}>
-                {passwordMsg.text}
-              </p>
-            )}
+            <p role="alert" aria-live="polite" className="text-xs min-h-[1rem]"
+              style={{ color: passwordMsg ? (passwordMsg.type === "success" ? "var(--green)" : "var(--color-danger)") : "transparent" }}>
+              {passwordMsg?.text || "　"}
+            </p>
 
             <div className="flex justify-end">
               <button
                 type="submit"
                 disabled={passwordLoading || !newPassword || !confirmPassword}
+                aria-disabled={passwordLoading || !newPassword || !confirmPassword}
                 className="px-6 py-2.5 rounded-full text-xs tracking-widest transition-all"
                 style={{
-                  backgroundColor: passwordLoading || !newPassword || !confirmPassword ? "var(--bg-disabled)" : "#6ee7b7",
-                  color: passwordLoading || !newPassword || !confirmPassword ? "var(--text-disabled)" : "#065f46",
+                  backgroundColor: passwordLoading || !newPassword || !confirmPassword ? "var(--bg-disabled)" : "var(--green)",
+                  color: passwordLoading || !newPassword || !confirmPassword ? "var(--text-disabled)" : "var(--color-btn-text)",
                   cursor: passwordLoading || !newPassword || !confirmPassword ? "not-allowed" : "pointer",
                 }}
               >
@@ -268,72 +275,85 @@ export default function AccountPage() {
             アカウントとすべての記録データが完全に削除されます。この操作は取り消せません。
           </p>
 
-          {!showDeleteConfirm ? (
-            <button
-              onClick={() => setShowDeleteConfirm(true)}
-              className="px-6 py-2.5 rounded-full text-xs tracking-widest transition-all"
-              style={{
-                backgroundColor: "transparent",
-                border: "1px solid #fca5a5",
-                color: "#fca5a5",
-                cursor: "pointer",
-              }}
-            >
-              アカウントを削除する
-            </button>
-          ) : (
-            <div className="space-y-4">
-              <div className="rounded-2xl p-4" style={{ backgroundColor: "var(--bg)", border: "1px solid #fca5a5" }}>
-                <p className="text-xs mb-3 leading-relaxed" style={{ color: "#fca5a5" }}>
-                  確認のため、メールアドレス（{userEmail}）を入力してください
-                </p>
-                <input
-                  type="email"
-                  value={deleteConfirmText}
-                  onChange={(e) => setDeleteConfirmText(e.target.value)}
-                  placeholder={userEmail}
-                  className="w-full px-4 py-3 rounded-2xl text-sm outline-none"
-                  style={{
-                    backgroundColor: "var(--bg-card)",
-                    border: "1px solid var(--border)",
-                    color: "var(--text-primary)",
-                  }}
-                />
-              </div>
-
-              {deleteMsg && (
-                <p className="text-xs" style={{ color: "#fca5a5" }}>{deleteMsg.text}</p>
-              )}
-
-              <div className="flex gap-3 justify-end">
-                <button
-                  onClick={() => { setShowDeleteConfirm(false); setDeleteConfirmText(""); setDeleteMsg(null); }}
-                  className="px-6 py-2.5 rounded-full text-xs tracking-widest"
-                  style={{
-                    backgroundColor: "var(--bg)",
-                    border: "1px solid var(--border)",
-                    color: "var(--text-muted)",
-                    cursor: "pointer",
-                  }}
-                >
-                  キャンセル
-                </button>
-                <button
-                  onClick={handleDeleteAccount}
-                  disabled={deleteLoading || deleteConfirmText !== userEmail}
-                  className="px-6 py-2.5 rounded-full text-xs tracking-widest transition-all"
-                  style={{
-                    backgroundColor: deleteLoading || deleteConfirmText !== userEmail ? "var(--bg-disabled)" : "#fca5a5",
-                    color: deleteLoading || deleteConfirmText !== userEmail ? "var(--text-disabled)" : "#7f1d1d",
-                    cursor: deleteLoading || deleteConfirmText !== userEmail ? "not-allowed" : "pointer",
-                  }}
-                >
-                  {deleteLoading ? "削除中…" : "削除を実行する"}
-                </button>
-              </div>
-            </div>
-          )}
+          <button
+            onClick={() => setShowDeleteConfirm(true)}
+            className="px-6 py-2.5 rounded-full text-xs tracking-widest transition-all"
+            style={{
+              backgroundColor: "transparent",
+              border: "1px solid var(--color-danger)",
+              color: "var(--color-danger)",
+              cursor: "pointer",
+            }}
+          >
+            アカウントを削除する
+          </button>
         </section>
+
+        {/* ── 削除確認 Dialog ── */}
+        <Dialog
+          open={showDeleteConfirm}
+          onOpenChange={(open) => {
+            if (!open) { setDeleteConfirmText(""); setDeleteMsg(null); }
+            setShowDeleteConfirm(open);
+          }}
+          title="アカウントの削除"
+          description="アカウントとすべての記録データが完全に削除されます。この操作は取り消せません。"
+        >
+          <div className="space-y-4">
+            <div>
+              <label htmlFor="delete-confirm-email" className="block text-xs tracking-widest mb-2"
+                style={{ color: "var(--color-danger)" }}>
+                確認のため、メールアドレスを入力してください
+              </label>
+              <input
+                id="delete-confirm-email"
+                type="email"
+                value={deleteConfirmText}
+                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                placeholder={userEmail}
+                className="w-full px-4 py-3 rounded-2xl text-sm outline-none"
+                style={{
+                  backgroundColor: "var(--bg)",
+                  border: "1px solid var(--border)",
+                  color: "var(--text-primary)",
+                }}
+              />
+            </div>
+
+            <p role="alert" aria-live="polite" className="text-xs min-h-[1rem]"
+              style={{ color: deleteMsg ? "var(--color-danger)" : "transparent" }}>
+              {deleteMsg?.text || "　"}
+            </p>
+
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => { setShowDeleteConfirm(false); setDeleteConfirmText(""); setDeleteMsg(null); }}
+                className="px-6 py-2.5 rounded-full text-xs tracking-widest"
+                style={{
+                  backgroundColor: "var(--bg)",
+                  border: "1px solid var(--border)",
+                  color: "var(--text-muted)",
+                  cursor: "pointer",
+                }}
+              >
+                キャンセル
+              </button>
+              <button
+                onClick={handleDeleteAccount}
+                disabled={deleteLoading || deleteConfirmText !== userEmail}
+                aria-disabled={deleteLoading || deleteConfirmText !== userEmail}
+                className="px-6 py-2.5 rounded-full text-xs tracking-widest transition-all"
+                style={{
+                  backgroundColor: deleteLoading || deleteConfirmText !== userEmail ? "var(--bg-disabled)" : "var(--color-danger)",
+                  color: deleteLoading || deleteConfirmText !== userEmail ? "var(--text-disabled)" : "var(--color-danger-text)",
+                  cursor: deleteLoading || deleteConfirmText !== userEmail ? "not-allowed" : "pointer",
+                }}
+              >
+                {deleteLoading ? "削除中…" : "削除を実行する"}
+              </button>
+            </div>
+          </div>
+        </Dialog>
 
         {/* ログアウト */}
         <div className="text-center">
