@@ -64,6 +64,11 @@ export default function Home() {
   const [tab, setTab] = useState<Tab>("journal");
   const [highlightedEntryId, setHighlightedEntryId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingText, setEditingText] = useState("");
+  const [editSaving, setEditSaving] = useState(false);
+  const [editError, setEditError] = useState("");
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
@@ -312,6 +317,73 @@ export default function Home() {
     setDeletingId(null);
   };
 
+  const handleEditStart = (entry: Entry) => {
+    setMenuOpenId(null);
+    setDeletingId(null);
+    setEditError("");
+    setEditingText(entry.content);
+    setEditingId(entry.id);
+  };
+
+  const handleEditCancel = () => {
+    setEditingId(null);
+    setEditingText("");
+    setEditError("");
+  };
+
+  const handleEditSave = async (id: string) => {
+    const text = editingText.trim();
+    if (!text) { setEditError("内容が空です"); return; }
+    const original = entries.find((e) => e.id === id);
+    if (!original) return;
+    if (text === original.content.trim()) { handleEditCancel(); return; }
+
+    setEditSaving(true);
+    setEditError("");
+    try {
+      // 凪のコメント・感情を再生成
+      const res = await fetch("/api/comment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: text }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setEditError(data.error || "エラーが発生しました"); return; }
+
+      const supabase = createClient();
+      // created_at / note / is_favorited は対象に含めず保持
+      const { error: updErr } = await supabase
+        .from("entries")
+        .update({
+          content:       text,
+          comment:       data.comment,
+          emotions:      data.emotions || [],
+          dominant:      data.dominant || "穏やか",
+          energy:        data.energy   || 5,
+          insight_level: data.insightLevel || "moderate", // camelCase → snake_case
+        })
+        .eq("id", id);
+      if (updErr) { setEditError("保存に失敗しました"); return; }
+
+      setEntries((prev) => prev.map((e) => e.id === id ? {
+        ...e,
+        content:      text,
+        comment:      data.comment,
+        emotions:     data.emotions || [],
+        dominant:     data.dominant || "穏やか",
+        energy:       data.energy   || 5,
+        insightLevel: data.insightLevel || "moderate",
+      } : e));
+
+      setEditingId(null);
+      setEditingText("");
+    } catch {
+      setEditError("通信エラーが発生しました");
+    } finally {
+      setEditSaving(false);
+    }
+  };
+
   const toggleExpand = (id: string) => {
     setExpandedIds((prev) => {
       const next = new Set(prev);
@@ -337,6 +409,21 @@ export default function Home() {
     const clearTimer = setTimeout(() => setHighlightedEntryId(null), 2800);
     return () => { clearTimeout(scrollTimer); clearTimeout(clearTimer); };
   }, [highlightedEntryId]);
+
+  // 記録メニュー（編集/削除）を外側クリック・Escapeで閉じる
+  useEffect(() => {
+    if (!menuOpenId) return;
+    const handleClick = () => setMenuOpenId(null);
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMenuOpenId(null);
+    };
+    document.addEventListener("click", handleClick);
+    document.addEventListener("keydown", handleKey);
+    return () => {
+      document.removeEventListener("click", handleClick);
+      document.removeEventListener("keydown", handleKey);
+    };
+  }, [menuOpenId]);
 
   const fmtDate = (iso: string) =>
     new Date(iso).toLocaleDateString("ja-JP", {
@@ -722,19 +809,52 @@ export default function Home() {
                               やめる
                             </button>
                           </div>
-                        ) : (
-                          <button
-                            onClick={() => setDeletingId(entry.id)}
-                            className="flex items-center justify-center w-11 h-11 -mr-2 rounded-full transition-colors hover:bg-black/5"
-                            style={{ color: "var(--text-muted)" }}
-                            aria-label="この記録のメニュー"
-                          >
-                            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                              <circle cx="3" cy="8" r="1.5" />
-                              <circle cx="8" cy="8" r="1.5" />
-                              <circle cx="13" cy="8" r="1.5" />
-                            </svg>
-                          </button>
+                        ) : editingId === entry.id ? null : (
+                          <div className="relative">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setMenuOpenId(menuOpenId === entry.id ? null : entry.id);
+                              }}
+                              className="flex items-center justify-center w-11 h-11 -mr-2 rounded-full transition-colors hover:bg-black/5"
+                              style={{ color: "var(--text-muted)" }}
+                              aria-label="この記録のメニュー"
+                              aria-haspopup="menu"
+                              aria-expanded={menuOpenId === entry.id}
+                            >
+                              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                                <circle cx="3" cy="8" r="1.5" />
+                                <circle cx="8" cy="8" r="1.5" />
+                                <circle cx="13" cy="8" r="1.5" />
+                              </svg>
+                            </button>
+                            {menuOpenId === entry.id && (
+                              <div
+                                role="menu"
+                                onClick={(e) => e.stopPropagation()}
+                                className="absolute right-0 top-12 z-20 rounded-2xl overflow-hidden shadow-md"
+                                style={{ backgroundColor: "var(--bg-card)", border: "1px solid var(--border)", minWidth: "120px" }}
+                              >
+                                <button
+                                  role="menuitem"
+                                  onClick={() => handleEditStart(entry)}
+                                  className="w-full min-h-[44px] px-5 text-xs tracking-widest text-left transition-colors hover:bg-black/5"
+                                  style={{ color: "var(--text-secondary)" }}
+                                >
+                                  編集する
+                                </button>
+                                <div className="h-px" style={{ backgroundColor: "var(--border)" }} />
+                                <button
+                                  role="menuitem"
+                                  onClick={() => { setMenuOpenId(null); setDeletingId(entry.id); }}
+                                  className="w-full min-h-[44px] px-5 text-xs tracking-widest text-left transition-colors hover:bg-black/5"
+                                  style={{ color: "#ef4444" }}
+                                >
+                                  削除する
+                                </button>
+                              </div>
+                            )}
+                          </div>
                         )}
                       </div>
 
@@ -764,9 +884,71 @@ export default function Home() {
                       )}
 
                       {/* 本文 */}
-                      <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: "var(--text-entry)" }}>
-                        {entry.content}
-                      </p>
+                      {editingId === entry.id ? (
+                        editSaving ? (
+                          <div className="h-32 flex flex-col items-center justify-center gap-4">
+                            <div className="relative w-12 h-12 flex items-center justify-center flex-shrink-0">
+                              <div className="loading-ring" style={{ animationDelay: "0s" }} />
+                              <div className="loading-ring" style={{ animationDelay: "0.87s" }} />
+                              <div className="loading-ring" style={{ animationDelay: "1.73s" }} />
+                              <div className="w-2 h-2 rounded-full flex-shrink-0"
+                                style={{ backgroundColor: "var(--green)", opacity: 0.7 }} />
+                            </div>
+                            <p className="text-xs tracking-widest" style={{ color: "var(--text-muted)" }}>
+                              凪が読みなおしています
+                            </p>
+                          </div>
+                        ) : (
+                          <div className="space-y-3">
+                            <textarea
+                              value={editingText}
+                              onChange={(e) => setEditingText(e.target.value)}
+                              maxLength={5000}
+                              autoFocus
+                              rows={6}
+                              className="w-full text-sm resize-none outline-none leading-relaxed rounded-2xl p-3"
+                              style={{
+                                color: "var(--text-primary)",
+                                backgroundColor: "var(--bg)",
+                                border: "1px solid var(--border)",
+                              }}
+                              aria-label="記録を編集"
+                            />
+                            {editError && <p className="text-xs" style={{ color: "#fca5a5" }}>{editError}</p>}
+                            <div className="flex justify-end gap-2">
+                              <button
+                                onClick={handleEditCancel}
+                                className="text-xs tracking-widest px-4 py-2 rounded-full"
+                                style={{ color: "var(--text-muted)", border: "1px solid var(--border)" }}
+                              >
+                                やめる
+                              </button>
+                              {(() => {
+                                const disabled = !editingText.trim()
+                                  || editingText.trim() === entry.content.trim();
+                                return (
+                                  <button
+                                    onClick={() => handleEditSave(entry.id)}
+                                    disabled={disabled}
+                                    className="text-xs tracking-widest px-5 py-2 rounded-full transition-all"
+                                    style={{
+                                      backgroundColor: disabled ? "var(--bg-disabled)" : "var(--green)",
+                                      color:           disabled ? "var(--text-disabled)" : "#065f46",
+                                      cursor:          disabled ? "not-allowed" : "pointer",
+                                    }}
+                                  >
+                                    保存する
+                                  </button>
+                                );
+                              })()}
+                            </div>
+                          </div>
+                        )
+                      ) : (
+                        <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: "var(--text-entry)" }}>
+                          {entry.content}
+                        </p>
+                      )}
 
                       {/* FROM NAGI — 折りたたみ */}
                       <div
@@ -873,9 +1055,21 @@ export default function Home() {
                       <img src="/icon-nagi.png" alt="Nagi" className="w-10 h-10 block" />
                     </div>
                     <p className="text-sm" style={{ color: "var(--text-subtle)" }}>まだ記録がありません</p>
-                    <p className="text-xs mt-2 leading-relaxed" style={{ color: "var(--text-faint)" }}>
-                      はじめての記録をすると、凪からことばが届きます
+
+                    <p className="text-xs mt-4 leading-loose max-w-[280px] mx-auto"
+                      style={{ color: "var(--text-faint)" }}>
+                      凪は、出来事の良し悪しを決めません。あなたが書いたことばを静かに受けとり、そこにある気持ちをそっと言葉にして返します。
                     </p>
+
+                    <div className="mt-6 mx-auto max-w-[280px] pt-5"
+                      style={{ borderTop: "1px solid var(--border-inner)" }}>
+                      <p className="text-xs tracking-widest mb-2" style={{ color: "var(--text-muted)" }}>
+                        最初の一歩
+                      </p>
+                      <p className="text-xs leading-loose" style={{ color: "var(--text-faint)" }}>
+                        画面上部の入力欄に、今日のことを少しだけ書いてみてください。うまく言葉にならなくても、そのままで大丈夫です。記録すると、凪からことばが届きます。
+                      </p>
+                    </div>
                   </div>
                 )
               )
