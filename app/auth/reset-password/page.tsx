@@ -76,14 +76,19 @@ export default function ResetPasswordPage() {
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs tracking-widest mb-2" style={{ color: "var(--text-muted)" }}>
-                  新しいパスワード（8文字以上・英字+数字）
+                <label htmlFor="reset-password" className="block text-xs tracking-widest mb-2" style={{ color: "var(--text-muted)" }}>
+                  新しいパスワード
                 </label>
+                <p id="reset-pw-hint" className="text-xs mb-2" style={{ color: "var(--text-muted)" }}>
+                  8文字以上・英字と数字を含めてください
+                </p>
                 <input
+                  id="reset-password"
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
+                  aria-describedby="reset-pw-hint"
                   className="w-full px-4 py-3 rounded-2xl text-sm outline-none"
                   style={{
                     backgroundColor: "var(--bg)",
@@ -94,10 +99,11 @@ export default function ResetPasswordPage() {
               </div>
 
               <div>
-                <label className="block text-xs tracking-widest mb-2" style={{ color: "var(--text-muted)" }}>
+                <label htmlFor="reset-confirm" className="block text-xs tracking-widest mb-2" style={{ color: "var(--text-muted)" }}>
                   パスワード確認
                 </label>
                 <input
+                  id="reset-confirm"
                   type="password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
@@ -111,17 +117,19 @@ export default function ResetPasswordPage() {
                 />
               </div>
 
-              {error && (
-                <p className="text-xs" style={{ color: "#fca5a5" }}>{error}</p>
-              )}
+              <p role="alert" aria-live="polite" className="text-xs min-h-[1rem]"
+                style={{ color: error ? "var(--color-danger)" : "transparent" }}>
+                {error || "　"}
+              </p>
 
               <button
                 type="submit"
                 disabled={loading}
+                aria-disabled={loading}
                 className="w-full py-3 rounded-full text-xs tracking-widest transition-all mt-2"
                 style={{
-                  backgroundColor: loading ? "var(--bg-disabled)" : "#6ee7b7",
-                  color: loading ? "var(--text-disabled)" : "#065f46",
+                  backgroundColor: loading ? "var(--bg-disabled)" : "var(--green)",
+                  color: loading ? "var(--text-disabled)" : "var(--color-btn-text)",
                   cursor: loading ? "not-allowed" : "pointer",
                 }}
               >

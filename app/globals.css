@@ -19,6 +19,23 @@
   --green:          #6ee7b7;
   --green-light:    #d1fae5;
   --yellow:         #fde68a;
+
+  /* ── セマンティクスカラー ── */
+  --color-btn-text:    #065f46;  /* green ボタン上のテキスト */
+  --color-danger:      #fca5a5;  /* エラー・危険操作 */
+  --color-danger-text: #7f1d1d;  /* 危険ボタン上のテキスト */
+  --color-danger-bg:   transparent;
+
+  /* ── Border Radius スケール ── */
+  --radius-sm:   0.75rem;   /* 12px — タグ・バッジ */
+  --radius-md:   1rem;      /* 16px — インプット */
+  --radius-lg:   1.5rem;    /* 24px — カード */
+  --radius-full: 9999px;    /* ボタン・アバター */
+
+  /* ── Motion ── */
+  --duration-fast:   150ms;
+  --duration-normal: 250ms;
+  --easing-calm:     cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .dark {
@@ -34,8 +51,8 @@
   --text-disabled:  #6b6560;
   --text-subtle:    #6b6560;
   --text-faint:     #4a4540;
-  --border:         #302d2a;
-  --border-inner:   #262320;
+  --border:         #4a4540;  /* v1.49: WCAG 1.4.11 準拠（3.2:1） */
+  --border-inner:   #302d2a;
   --tab-active:     #908a85;
   --green:          #6ee7b7;
   --green-light:    #d1fae5;
