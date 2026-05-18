@@ -391,8 +391,21 @@ export default function AccountPage() {
         {/* ログアウト */}
         <div className="text-center">
           <form action={logout}>
-            <button type="submit" className="text-xs tracking-widest px-6 py-2.5 rounded-full transition-colors"
-              style={{ border: "1px solid var(--border)", color: "var(--text-muted)", backgroundColor: "var(--bg)", cursor: "pointer" }}>
+            <button
+              type="submit"
+              className="logout-ripple-btn text-xs tracking-widest px-6 py-2.5 rounded-full"
+              style={{ border: "1px solid var(--border)", color: "var(--text-muted)", backgroundColor: "var(--bg)", cursor: "pointer" }}
+              onPointerDown={(e) => {
+                const btn = e.currentTarget;
+                const rect = btn.getBoundingClientRect();
+                const span = document.createElement("span");
+                span.className = "ripple";
+                span.style.top = `${e.clientY - rect.top}px`;
+                span.style.left = `${e.clientX - rect.left}px`;
+                btn.appendChild(span);
+                span.addEventListener("animationend", () => span.remove());
+              }}
+            >
               ログアウト
             </button>
           </form>

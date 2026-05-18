@@ -84,6 +84,7 @@ export default function Home() {
   const [weeklySummary, setWeeklySummary] = useState<string | null>(null);
   const [weeklyLoading, setWeeklyLoading] = useState(false);
   const [showWelcome, setShowWelcome] = useState(false);
+  const [showAccountMenu, setShowAccountMenu] = useState(false);
 
   useEffect(() => {
     const supabase = createClient();
@@ -499,11 +500,12 @@ export default function Home() {
                 </button>
               )}
               {userEmail && (
-                <a href="/account"
+                <button
+                  onClick={() => setShowAccountMenu(true)}
                   className="flex items-center justify-center w-11 h-11 rounded-full transition-colors"
-                  style={{ color: "var(--text-muted)" }}
-                  title="設定・ログアウト"
-                  aria-label="アカウント設定">
+                  style={{ color: "var(--text-muted)", background: "none", border: "none", cursor: "pointer" }}
+                  title="アカウントメニュー"
+                  aria-label="アカウントメニュー">
                   <span className="flex items-center justify-center w-8 h-8 rounded-full"
                     style={{ border: "1px solid var(--border)" }}>
                     <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
@@ -511,7 +513,7 @@ export default function Home() {
                       <path d="M2.5 14c0-2.76 2.46-5 5.5-5s5.5 2.24 5.5 5"/>
                     </svg>
                   </span>
-                </a>
+                </button>
               )}
             </div>
           </div>
@@ -984,6 +986,93 @@ export default function Home() {
 
 
       </main>
+
+      {/* ══════════════════════════════
+          アカウントメニュー（ボトムシート）
+      ══════════════════════════════ */}
+      {showAccountMenu && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="アカウントメニュー"
+          className="fixed inset-0 z-50 account-sheet-overlay"
+          onClick={() => setShowAccountMenu(false)}
+        >
+          <div
+            className="absolute bottom-0 left-0 right-0 account-sheet"
+            style={{
+              backgroundColor: "var(--bg-card)",
+              borderRadius: "1.5rem 1.5rem 0 0",
+              borderTop: "1px solid var(--border)",
+              paddingBottom: "env(safe-area-inset-bottom, 1.5rem)",
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            {/* ドラッグハンドル */}
+            <div className="w-10 h-1 rounded-full mx-auto mt-3 mb-6"
+              style={{ backgroundColor: "var(--border)" }} />
+
+            {/* ユーザー情報 */}
+            <div className="flex items-center gap-3 px-6 mb-5">
+              <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
+                style={{ backgroundColor: "var(--green-light)" }}>
+                <span className="text-sm font-medium" style={{ color: "var(--color-btn-text)" }}>
+                  {userEmail?.[0]?.toUpperCase()}
+                </span>
+              </div>
+              <p className="text-sm truncate" style={{ color: "var(--text-secondary)" }}>
+                {userEmail}
+              </p>
+            </div>
+
+            {/* アカウント設定リンク */}
+            <a
+              href="/account"
+              className="flex items-center justify-between px-6 py-3.5"
+              style={{ borderTop: "1px solid var(--border-inner)" }}
+              onClick={() => setShowAccountMenu(false)}
+            >
+              <span className="text-sm tracking-wide" style={{ color: "var(--text-secondary)" }}>
+                アカウント設定
+              </span>
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor"
+                strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
+                style={{ color: "var(--text-muted)" }}>
+                <path d="M4.5 2.5L8 6l-3.5 3.5"/>
+              </svg>
+            </a>
+
+            {/* ログアウト */}
+            <div className="px-6 pt-2 pb-6"
+              style={{ borderTop: "1px solid var(--border-inner)" }}>
+              <form action={logout}>
+                <button
+                  type="submit"
+                  className="logout-ripple-btn w-full mt-4 py-3.5 rounded-2xl text-sm tracking-widest"
+                  style={{
+                    backgroundColor: "var(--bg)",
+                    border: "1px solid var(--border)",
+                    color: "var(--text-muted)",
+                    cursor: "pointer",
+                  }}
+                  onPointerDown={(e) => {
+                    const btn = e.currentTarget;
+                    const rect = btn.getBoundingClientRect();
+                    const span = document.createElement("span");
+                    span.className = "ripple";
+                    span.style.top = `${e.clientY - rect.top}px`;
+                    span.style.left = `${e.clientX - rect.left}px`;
+                    btn.appendChild(span);
+                    span.addEventListener("animationend", () => span.remove());
+                  }}
+                >
+                  ログアウト
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ══════════════════════════════
           初回ウェルカム画面（記録 0 件時）
