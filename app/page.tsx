@@ -996,31 +996,32 @@ export default function Home() {
           className="fixed inset-0 z-50 flex flex-col items-center justify-center px-6 welcome-fade-in"
           style={{ backgroundColor: "var(--bg)" }}
         >
-          <div className="w-14 h-14 mb-6 rounded-2xl overflow-hidden">
-            <img src="/icon-nagi.png" alt="Nagi" className="w-14 h-14 block" />
+          <div className="welcome-icon w-16 h-16 mb-7 rounded-2xl overflow-hidden"
+            style={{ boxShadow: "0 0 0 6px var(--border-inner), 0 0 20px 2px rgba(110,231,183,0.12)" }}>
+            <img src="/icon-nagi.png" alt="Nagi" className="w-16 h-16 block" />
           </div>
-          <p id="welcome-title" className="text-sm tracking-widest mb-5"
-            style={{ color: "var(--text-subtle)" }}>凪へ ようこそ</p>
+          <p id="welcome-title" className="welcome-title text-base tracking-widest mb-5"
+            style={{ color: "var(--text-secondary)" }}>凪へ ようこそ</p>
 
-          <p className="text-xs leading-loose max-w-[300px] text-center"
-            style={{ color: "var(--text-faint)" }}>
+          <p className="welcome-body text-xs leading-loose max-w-[300px] text-center"
+            style={{ color: "var(--text-secondary)" }}>
             凪は、出来事の良し悪しを決めません。あなたが書いたことばを静かに受けとり、そこにある気持ちをそっと言葉にして返します。
           </p>
 
-          <div className="mt-6 mx-auto max-w-[300px] pt-5"
+          <div className="welcome-section mt-8 mx-auto max-w-[300px] pt-5"
             style={{ borderTop: "1px solid var(--border-inner)" }}>
             <p className="text-xs tracking-widest mb-2 text-center"
               style={{ color: "var(--text-muted)" }}>最初の一歩</p>
             <p className="text-xs leading-loose text-center"
-              style={{ color: "var(--text-faint)" }}>
+              style={{ color: "var(--text-muted)" }}>
               画面上部の入力欄に、今日のことを少しだけ書いてみてください。うまく言葉にならなくても、そのままで大丈夫です。記録すると、凪からことばが届きます。
             </p>
           </div>
 
           <button
             onClick={() => setShowWelcome(false)}
-            className="mt-10 text-xs tracking-widest px-8 py-3 rounded-full"
-            style={{ backgroundColor: "var(--green)", color: "var(--text-primary)" }}
+            className="welcome-btn mt-10 text-xs tracking-widest px-10 py-3.5 rounded-full transition-opacity hover:opacity-80"
+            style={{ backgroundColor: "var(--green)", color: "var(--color-btn-text)" }}
           >
             はじめる
           </button>
