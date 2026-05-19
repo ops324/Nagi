@@ -6,6 +6,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { logout } from "../auth/actions";
 import { Dialog } from "../components/ui/Dialog";
+import { ABOUT_INTRO } from "../lib/about";
 
 export default function AccountPage() {
   const router = useRouter();
@@ -147,6 +148,15 @@ export default function AccountPage() {
       </header>
 
       <main className="max-w-lg mx-auto px-6 py-8 space-y-6">
+
+        {/* ── 凪について ── */}
+        <section className="rounded-3xl p-6 shadow-sm"
+          style={{ backgroundColor: "var(--bg-card)", border: "1px solid var(--border)" }}>
+          <p className="text-xs tracking-widest mb-4" style={{ color: "var(--text-muted)" }}>凪について</p>
+          <p className="text-xs leading-loose" style={{ color: "var(--text-secondary)" }}>
+            {ABOUT_INTRO}
+          </p>
+        </section>
 
         {/* ── メールアドレス変更 ── */}
         <section className="rounded-3xl p-6 shadow-sm"

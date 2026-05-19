@@ -7,6 +7,10 @@ import { Entry, Emotion, EMOTION_COLORS } from "./types";
 import { createClient } from "@/lib/supabase/client";
 import { logout } from "./auth/actions";
 import EntryCard from "./components/EntryCard";
+import Toast from "./components/ui/Toast";
+import { ABOUT_INTRO, ABOUT_FIRST_STEP } from "./lib/about";
+import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
+import * as RadixDialog from "@radix-ui/react-dialog";
 
 const LOADING_QUESTIONS: Record<"negative" | "positive" | "neutral", string[]> = {
   negative: [
@@ -52,6 +56,15 @@ const emotionGradient = (emotions: Emotion[]) => {
   return `linear-gradient(to right, ${stops.join(", ")})`;
 };
 
+// 今週の凪キャッシュ用：その週の日曜始まりを YYYY-MM-DD で返す
+const weekStartKey = () => {
+  const now = new Date();
+  const ws = new Date(now);
+  ws.setDate(now.getDate() - now.getDay());
+  ws.setHours(0, 0, 0, 0);
+  return ws.toISOString().slice(0, 10);
+};
+
 const EmotionCalendar = dynamic(() => import("./components/EmotionCalendar"), { ssr: false });
 
 type Tab = "journal" | "calendar";
@@ -65,11 +78,13 @@ export default function Home() {
   const [tab, setTab] = useState<Tab>("journal");
   const [highlightedEntryId, setHighlightedEntryId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<{ entry: Entry; index: number } | null>(null);
+  const deleteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState("");
   const [editSaving, setEditSaving] = useState(false);
   const [editError, setEditError] = useState("");
+  const [regenerateOnEdit, setRegenerateOnEdit] = useState(true);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [newEntryId, setNewEntryId] = useState<string | null>(null);
@@ -136,6 +151,9 @@ export default function Home() {
     loadEntries();
     const draft = localStorage.getItem("nagi-draft");
     if (draft) setContent(draft);
+    // 今週の凪をキャッシュから復元
+    const cachedWeekly = localStorage.getItem(`nagi-weekly-${weekStartKey()}`);
+    if (cachedWeekly) setWeeklySummary(cachedWeekly);
   }, []);
 
   // ローディング中のフェーズサイクル
@@ -215,6 +233,12 @@ export default function Home() {
       setEntries([entry, ...entries]);
       setNewEntryId(entry.id);
       setTimeout(() => setNewEntryId(null), 4000);
+      // 投稿後、凪の返答（新しい記録）まで自動スクロール
+      setTimeout(() => {
+        document
+          .getElementById(`entry-${entry.id}`)
+          ?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 120);
       localStorage.removeItem("nagi-draft");
       setContent("");
     } catch {
@@ -304,7 +328,10 @@ export default function Home() {
         body: JSON.stringify({ entries: thisWeekEntries }),
       });
       const data = await res.json();
-      if (res.ok) setWeeklySummary(data.summary);
+      if (res.ok) {
+        setWeeklySummary(data.summary);
+        localStorage.setItem(`nagi-weekly-${weekStartKey()}`, data.summary);
+      }
     } catch {
       // silent
     } finally {
@@ -312,19 +339,53 @@ export default function Home() {
     }
   };
 
-  const handleDelete = async (id: string) => {
+  const commitDelete = async (id: string) => {
     const supabase = createClient();
-    const { error } = await supabase.from("entries").delete().eq("id", id);
-    if (!error) {
-      setEntries((prev) => prev.filter((e) => e.id !== id));
-    }
+    await supabase.from("entries").delete().eq("id", id);
+  };
+
+  // 楽観的削除：UIから即座に外し、トーストで5秒間アンドゥ可能にする
+  const handleDelete = (id: string) => {
     setDeletingId(null);
+    // 保留中の削除があれば即コミット（保留は常に1件）
+    if (deleteTimerRef.current) {
+      clearTimeout(deleteTimerRef.current);
+      deleteTimerRef.current = null;
+    }
+    if (pendingDelete) commitDelete(pendingDelete.entry.id);
+
+    const index = entries.findIndex((e) => e.id === id);
+    const entry = entries[index];
+    if (!entry) return;
+
+    setEntries((prev) => prev.filter((e) => e.id !== id));
+    setPendingDelete({ entry, index });
+    deleteTimerRef.current = setTimeout(() => {
+      commitDelete(entry.id);
+      setPendingDelete(null);
+      deleteTimerRef.current = null;
+    }, 5000);
+  };
+
+  const handleUndoDelete = () => {
+    if (!pendingDelete) return;
+    if (deleteTimerRef.current) {
+      clearTimeout(deleteTimerRef.current);
+      deleteTimerRef.current = null;
+    }
+    const { entry, index } = pendingDelete;
+    setEntries((prev) => {
+      const next = [...prev];
+      next.splice(Math.min(index, next.length), 0, entry);
+      return next;
+    });
+    setPendingDelete(null);
   };
 
   const handleEditStart = (entry: Entry) => {
-    setMenuOpenId(null);
     setDeletingId(null);
     setEditError("");
+    setRegenerateOnEdit(true);
     setEditingText(entry.content);
     setEditingId(entry.id);
   };
@@ -345,6 +406,21 @@ export default function Home() {
     setEditSaving(true);
     setEditError("");
     try {
+      const supabase = createClient();
+
+      // 凪に読みなおしてもらわない場合：本文のみ更新し、ことば・感情は保持
+      if (!regenerateOnEdit) {
+        const { error: updErr } = await supabase
+          .from("entries")
+          .update({ content: text })
+          .eq("id", id);
+        if (updErr) { setEditError("保存に失敗しました"); return; }
+        setEntries((prev) => prev.map((e) => e.id === id ? { ...e, content: text } : e));
+        setEditingId(null);
+        setEditingText("");
+        return;
+      }
+
       // 凪のコメント・感情を再生成
       const res = await fetch("/api/comment", {
         method: "POST",
@@ -354,7 +430,6 @@ export default function Home() {
       const data = await res.json();
       if (!res.ok) { setEditError(data.error || "エラーが発生しました"); return; }
 
-      const supabase = createClient();
       // created_at / note / is_favorited は対象に含めず保持
       const { error: updErr } = await supabase
         .from("entries")
@@ -414,21 +489,6 @@ export default function Home() {
       await navigator.clipboard.writeText(url);
     }
   };
-
-  // 記録メニュー（編集/削除）を外側クリック・Escapeで閉じる
-  useEffect(() => {
-    if (!menuOpenId) return;
-    const handleClick = () => setMenuOpenId(null);
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setMenuOpenId(null);
-    };
-    document.addEventListener("click", handleClick);
-    document.addEventListener("keydown", handleKey);
-    return () => {
-      document.removeEventListener("click", handleClick);
-      document.removeEventListener("keydown", handleKey);
-    };
-  }, [menuOpenId]);
 
   const fmtDate = (iso: string) =>
     new Date(iso).toLocaleDateString("ja-JP", {
@@ -577,6 +637,7 @@ export default function Home() {
                   value={content}
                   onChange={(e) => handleContentChange(e.target.value)}
                   onKeyDown={handleKeyDown}
+                  maxLength={5000}
                   placeholder={"今日、どんなことがありましたか。\nうまく言葉にならなくても、大丈夫です。"}
                   className="w-full h-40 text-sm resize-none outline-none leading-relaxed"
                   style={{
@@ -598,7 +659,10 @@ export default function Home() {
 
               {error && <p className="text-xs mt-2" style={{ color: "#fca5a5" }}>{error}</p>}
               {!loading && (
-                <div className="flex justify-end mt-4">
+                <div className="flex items-center justify-between mt-4">
+                  <span className="text-xs" style={{ color: "var(--text-muted)" }}>
+                    {content.length > 4800 ? `${content.length} / 5000` : ""}
+                  </span>
                   <button
                     onClick={handleSubmit}
                     disabled={!content.trim()}
@@ -710,10 +774,14 @@ export default function Home() {
                 {searchQuery && (
                   <button
                     onClick={() => setSearchQuery("")}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-xs"
-                    style={{ color: "var(--text-faint)" }}
+                    aria-label="検索をクリア"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center justify-center w-6 h-6 rounded-full transition-colors hover:bg-black/5"
+                    style={{ color: "var(--text-muted)" }}
                   >
-                    ✕
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2"
+                      strokeLinecap="round" viewBox="0 0 24 24">
+                      <path d="M18 6 6 18M6 6l12 12" />
+                    </svg>
                   </button>
                 )}
               </div>
@@ -725,7 +793,8 @@ export default function Home() {
                 new Set(entries.flatMap(e => e.emotions?.map(em => em.label) ?? []))
               );
               const hasFavorites = entries.some(e => e.isFavorited);
-              if (availableEmotions.length === 0 && !hasFavorites) return null;
+              const hasDeep = entries.some(e => e.insightLevel === "deep");
+              if (availableEmotions.length === 0 && !hasFavorites && !hasDeep) return null;
               return (
                 <div className="overflow-x-auto pb-1 -mx-1 px-1">
                   <div className="flex gap-2 w-max">
@@ -770,6 +839,19 @@ export default function Home() {
                         ✦ お気に入り
                       </button>
                     )}
+                    {hasDeep && (
+                      <button
+                        onClick={() => setFilterKey(filterKey === "deep" ? null : "deep")}
+                        className="text-xs px-3 py-1.5 rounded-full transition-all flex-shrink-0"
+                        style={{
+                          border: `1px solid ${filterKey === "deep" ? "var(--tab-active)" : "var(--border)"}`,
+                          color: filterKey === "deep" ? "var(--tab-active)" : "var(--text-muted)",
+                          backgroundColor: filterKey === "deep" ? "color-mix(in srgb, var(--tab-active) 10%, transparent)" : "transparent",
+                        }}
+                      >
+                        深い気づき
+                      </button>
+                    )}
                   </div>
                 </div>
               );
@@ -782,6 +864,7 @@ export default function Home() {
                 .filter(e =>
                   filterKey === null ? true
                   : filterKey === "✦" ? e.isFavorited
+                  : filterKey === "deep" ? e.insightLevel === "deep"
                   : e.emotions?.some(em => em.label === filterKey)
                 )
                 .filter(e =>
@@ -832,6 +915,39 @@ export default function Home() {
                               aria-label="記録を編集"
                             />
                             {editError && <p className="text-xs" style={{ color: "#fca5a5" }}>{editError}</p>}
+                            <div className="flex flex-col gap-1.5">
+                              <button
+                                type="button"
+                                role="switch"
+                                aria-checked={regenerateOnEdit}
+                                onClick={() => setRegenerateOnEdit((v) => !v)}
+                                className="flex items-center gap-2.5 text-xs"
+                                style={{ color: "var(--text-secondary)", background: "none", border: "none", cursor: "pointer" }}
+                              >
+                                <span
+                                  aria-hidden="true"
+                                  style={{
+                                    width: "34px",
+                                    height: "20px",
+                                    borderRadius: "9999px",
+                                    padding: "2px",
+                                    backgroundColor: regenerateOnEdit ? "var(--green)" : "var(--bg-disabled)",
+                                    display: "flex",
+                                    justifyContent: regenerateOnEdit ? "flex-end" : "flex-start",
+                                    transition: "background-color 0.2s ease",
+                                    flexShrink: 0,
+                                  }}
+                                >
+                                  <span style={{ width: "16px", height: "16px", borderRadius: "50%", backgroundColor: "#fff" }} />
+                                </span>
+                                凪に読みなおしてもらう
+                              </button>
+                              <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+                                {regenerateOnEdit
+                                  ? "凪のことばは、読みなおすと新しくなります"
+                                  : "凪のことばは、そのまま残ります"}
+                              </p>
+                            </div>
                             <div className="flex justify-end gap-2">
                               <button
                                 onClick={handleEditCancel}
@@ -897,51 +1013,45 @@ export default function Home() {
                             </button>
                           </div>
                         ) : (
-                          <div className="relative">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setMenuOpenId(menuOpenId === entry.id ? null : entry.id);
-                              }}
-                              className="flex items-center justify-center w-11 h-11 -mr-2 rounded-full transition-colors hover:bg-black/5"
-                              style={{ color: "var(--text-muted)" }}
-                              aria-label="この記録のメニュー"
-                              aria-haspopup="menu"
-                              aria-expanded={menuOpenId === entry.id}
-                            >
-                              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                                <circle cx="3" cy="8" r="1.5" />
-                                <circle cx="8" cy="8" r="1.5" />
-                                <circle cx="13" cy="8" r="1.5" />
-                              </svg>
-                            </button>
-                            {menuOpenId === entry.id && (
-                              <div
-                                role="menu"
-                                onClick={(e) => e.stopPropagation()}
-                                className="absolute right-0 top-12 z-20 rounded-2xl overflow-hidden shadow-md"
+                          <DropdownMenu.Root>
+                            <DropdownMenu.Trigger asChild>
+                              <button
+                                className="flex items-center justify-center w-11 h-11 -mr-2 rounded-full transition-colors hover:bg-black/5"
+                                style={{ color: "var(--text-muted)" }}
+                                aria-label="この記録のメニュー"
+                              >
+                                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                                  <circle cx="3" cy="8" r="1.5" />
+                                  <circle cx="8" cy="8" r="1.5" />
+                                  <circle cx="13" cy="8" r="1.5" />
+                                </svg>
+                              </button>
+                            </DropdownMenu.Trigger>
+                            <DropdownMenu.Portal>
+                              <DropdownMenu.Content
+                                align="end"
+                                sideOffset={4}
+                                className="z-30 rounded-2xl overflow-hidden shadow-md"
                                 style={{ backgroundColor: "var(--bg-card)", border: "1px solid var(--border)", minWidth: "120px" }}
                               >
-                                <button
-                                  role="menuitem"
-                                  onClick={() => handleEditStart(entry)}
-                                  className="w-full min-h-[44px] px-5 text-xs tracking-widest text-left transition-colors hover:bg-black/5"
+                                <DropdownMenu.Item
+                                  onSelect={() => handleEditStart(entry)}
+                                  className="min-h-[44px] px-5 flex items-center text-xs tracking-widest cursor-pointer outline-none transition-colors hover:bg-black/5 data-[highlighted]:bg-black/5"
                                   style={{ color: "var(--text-secondary)" }}
                                 >
                                   編集する
-                                </button>
-                                <div className="h-px" style={{ backgroundColor: "var(--border)" }} />
-                                <button
-                                  role="menuitem"
-                                  onClick={() => { setMenuOpenId(null); setDeletingId(entry.id); }}
-                                  className="w-full min-h-[44px] px-5 text-xs tracking-widest text-left transition-colors hover:bg-black/5"
+                                </DropdownMenu.Item>
+                                <DropdownMenu.Separator className="h-px" style={{ backgroundColor: "var(--border)" }} />
+                                <DropdownMenu.Item
+                                  onSelect={() => setDeletingId(entry.id)}
+                                  className="min-h-[44px] px-5 flex items-center text-xs tracking-widest cursor-pointer outline-none transition-colors hover:bg-black/5 data-[highlighted]:bg-black/5"
                                   style={{ color: "#ef4444" }}
                                 >
                                   削除する
-                                </button>
-                              </div>
-                            )}
-                          </div>
+                                </DropdownMenu.Item>
+                              </DropdownMenu.Content>
+                            </DropdownMenu.Portal>
+                          </DropdownMenu.Root>
                         )
                       }
                     />
@@ -1077,44 +1187,53 @@ export default function Home() {
       {/* ══════════════════════════════
           初回ウェルカム画面（記録 0 件時）
       ══════════════════════════════ */}
-      {showWelcome && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="welcome-title"
-          className="fixed inset-0 z-50 flex flex-col items-center justify-center px-6 welcome-fade-in"
-          style={{ backgroundColor: "var(--bg)" }}
-        >
-          <div className="welcome-icon w-16 h-16 mb-7 rounded-2xl overflow-hidden"
-            style={{ boxShadow: "0 0 0 6px var(--border-inner), 0 0 20px 2px rgba(110,231,183,0.12)" }}>
-            <img src="/icon-nagi.png" alt="Nagi" className="w-16 h-16 block" />
-          </div>
-          <p id="welcome-title" className="welcome-title text-base tracking-widest mb-5"
-            style={{ color: "var(--text-secondary)" }}>凪へ ようこそ</p>
-
-          <p className="welcome-body text-xs leading-loose max-w-[300px] text-center"
-            style={{ color: "var(--text-secondary)" }}>
-            凪は、出来事の良し悪しを決めません。あなたが書いたことばを静かに受けとり、そこにある気持ちをそっと言葉にして返します。
-          </p>
-
-          <div className="welcome-section mt-8 mx-auto max-w-[300px] pt-5"
-            style={{ borderTop: "1px solid var(--border-inner)" }}>
-            <p className="text-xs tracking-widest mb-2 text-center"
-              style={{ color: "var(--text-muted)" }}>最初の一歩</p>
-            <p className="text-xs leading-loose text-center"
-              style={{ color: "var(--text-muted)" }}>
-              画面上部の入力欄に、今日のことを少しだけ書いてみてください。うまく言葉にならなくても、そのままで大丈夫です。記録すると、凪からことばが届きます。
-            </p>
-          </div>
-
-          <button
-            onClick={() => setShowWelcome(false)}
-            className="welcome-btn mt-10 text-xs tracking-widest px-10 py-3.5 rounded-full transition-opacity hover:opacity-80"
-            style={{ backgroundColor: "var(--green)", color: "var(--color-btn-text)" }}
+      <RadixDialog.Root open={showWelcome} onOpenChange={setShowWelcome}>
+        <RadixDialog.Portal>
+          <RadixDialog.Content
+            aria-describedby={undefined}
+            className="fixed inset-0 z-50 flex flex-col items-center justify-center px-6 welcome-fade-in focus:outline-none"
+            style={{ backgroundColor: "var(--bg)" }}
           >
-            はじめる
-          </button>
-        </div>
+            <div className="w-14 h-14 mb-6 rounded-2xl overflow-hidden">
+              <img src="/icon-nagi.png" alt="Nagi" className="w-14 h-14 block" />
+            </div>
+            <RadixDialog.Title className="text-sm tracking-widest mb-5"
+              style={{ color: "var(--text-muted)" }}>凪へ ようこそ</RadixDialog.Title>
+
+            <p className="text-xs leading-loose max-w-[300px] text-center"
+              style={{ color: "var(--text-secondary)" }}>
+              {ABOUT_INTRO}
+            </p>
+
+            <div className="mt-6 mx-auto max-w-[300px] pt-5"
+              style={{ borderTop: "1px solid var(--border-inner)" }}>
+              <p className="text-xs tracking-widest mb-2 text-center"
+                style={{ color: "var(--text-muted)" }}>最初の一歩</p>
+              <p className="text-xs leading-loose text-center"
+                style={{ color: "var(--text-secondary)" }}>
+                {ABOUT_FIRST_STEP}
+              </p>
+            </div>
+
+            <RadixDialog.Close asChild>
+              <button
+                className="mt-10 text-xs tracking-widest px-8 py-3 rounded-full"
+                style={{ backgroundColor: "var(--green)", color: "var(--color-btn-text)" }}
+              >
+                はじめる
+              </button>
+            </RadixDialog.Close>
+          </RadixDialog.Content>
+        </RadixDialog.Portal>
+      </RadixDialog.Root>
+
+      {/* 削除アンドゥ トースト */}
+      {pendingDelete && (
+        <Toast
+          message="記録を削除しました"
+          actionLabel="元に戻す"
+          onAction={handleUndoDelete}
+        />
       )}
     </div>
   );

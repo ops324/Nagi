@@ -277,6 +277,16 @@
 .welcome-section { animation: welcome-slide-up 0.6s var(--easing-calm) 0.35s both; }
 .welcome-btn     { animation: welcome-slide-up 0.6s var(--easing-calm) 0.45s both; }
 
+/* トースト：下からふわりと現れる */
+@keyframes toast-in {
+  from { opacity: 0; transform: translate(-50%, 12px); }
+  to   { opacity: 1; transform: translate(-50%, 0); }
+}
+
+.toast-in {
+  animation: toast-in 0.3s ease both;
+}
+
 /* ── Account Sheet ── */
 @keyframes sheet-slide-up {
   from { transform: translateY(100%); opacity: 0; }
@@ -405,6 +415,9 @@ textarea { caret-color: var(--green); }
 
   /* ウェルカム画面のフェードイン無し（瞬時表示） */
   .welcome-fade-in { animation: none; opacity: 1; }
+
+  /* トーストのスライドイン無し（瞬時表示） */
+  .toast-in { animation: none; opacity: 1; }
 
   /* 波紋は控えめ：拡張せず opacity だけ穏やかに揺らす */
   .loading-ring {
