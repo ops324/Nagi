@@ -151,9 +151,11 @@ export default function EntryCard({
           style={{
             height: "3px",
             background: gradient,
-            opacity: 0.85,
+            opacity: hovered ? 1.0 : 0.85,
+            filter: hovered ? "blur(0.8px)" : "none",
             position: "relative",
             zIndex: 1,
+            transition: "opacity 0.5s ease, filter 0.5s ease",
           }}
         />
 
@@ -161,12 +163,15 @@ export default function EntryCard({
         <div
           aria-hidden="true"
           style={{
-            height: "56px",
+            height: "88px",
             background: gradient,
-            opacity: 0.055,
+            opacity: hovered ? 0.10 : 0.055,
             marginTop: "-3px",
             position: "relative",
             zIndex: 1,
+            maskImage: "linear-gradient(to bottom, rgba(0,0,0,0.85) 0%, transparent 100%)",
+            WebkitMaskImage: "linear-gradient(to bottom, rgba(0,0,0,0.85) 0%, transparent 100%)",
+            transition: "opacity 0.7s ease",
           }}
         />
 
