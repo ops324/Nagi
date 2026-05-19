@@ -152,26 +152,28 @@ export default function EntryCard({
             height: "3px",
             background: gradient,
             opacity: hovered ? 1.0 : 0.85,
-            filter: hovered ? "blur(0.8px)" : "none",
             position: "relative",
-            zIndex: 1,
-            transition: "opacity 0.5s ease, filter 0.5s ease",
+            zIndex: 2,
+            transition: "opacity 0.6s ease",
           }}
         />
 
-        {/* ── 水彩にじみ wash ── */}
+        {/* ── 水彩にじみ wash（absolute: フロー外に置き、カード本体と重ねてフェード）── */}
         <div
           aria-hidden="true"
           style={{
-            height: "88px",
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            height: "180px",
             background: gradient,
-            opacity: hovered ? 0.10 : 0.055,
-            marginTop: "-3px",
-            position: "relative",
-            zIndex: 1,
-            maskImage: "linear-gradient(to bottom, black 0%, transparent 72%)",
-            WebkitMaskImage: "linear-gradient(to bottom, black 0%, transparent 72%)",
-            transition: "opacity 0.7s ease",
+            opacity: hovered ? 0.11 : 0.07,
+            zIndex: 0,
+            maskImage: "linear-gradient(to bottom, black 30%, transparent 90%)",
+            WebkitMaskImage: "linear-gradient(to bottom, black 30%, transparent 90%)",
+            transition: "opacity 0.8s ease",
+            pointerEvents: "none",
           }}
         />
 
@@ -181,7 +183,7 @@ export default function EntryCard({
             padding: "6px 28px 28px",
             position: "relative",
             zIndex: 2,
-            marginTop: "-22px",
+            marginTop: "63px",
           }}
         >
 
