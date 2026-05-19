@@ -203,8 +203,7 @@ export default function EntryCard({
             </time>
 
             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              {menuSlot}
-              {!menuSlot && isDeep && (
+              {isDeep && (
                 <span
                   style={{
                     fontFamily:
@@ -218,6 +217,7 @@ export default function EntryCard({
                   深い気づき
                 </span>
               )}
+              {menuSlot}
 
               <button
                 onClick={(e) => {
@@ -370,14 +370,25 @@ export default function EntryCard({
               );
             })}
 
-            {/* エネルギードット列 */}
-            <div
-              style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: "3px" }}
-              title={`エネルギー ${entry.energy} / 10`}
-              role="img"
-              aria-label={`エネルギーレベル: ${entry.energy} / 10`}
-            >
-              {Array.from({ length: ENERGY_DOT_COUNT }, (_, i) => {
+            {/* エネルギーラベル + ドット列 */}
+            <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: "6px" }}>
+              <span
+                style={{
+                  fontFamily: "var(--font-noto-serif-jp, 'Noto Serif JP', serif)",
+                  fontSize: "10px",
+                  letterSpacing: "0.12em",
+                  color: "var(--text-muted)",
+                }}
+              >
+                エネルギー
+              </span>
+              <div
+                style={{ display: "flex", alignItems: "center", gap: "3px" }}
+                title={`エネルギー ${entry.energy} / 10`}
+                role="img"
+                aria-label={`エネルギーレベル: ${entry.energy} / 10`}
+              >
+                {Array.from({ length: ENERGY_DOT_COUNT }, (_, i) => {
                 const filled = i < entry.energy;
                 return (
                   <div
@@ -392,7 +403,8 @@ export default function EntryCard({
                     }}
                   />
                 );
-              })}
+                })}
+              </div>
             </div>
           </div>
 
