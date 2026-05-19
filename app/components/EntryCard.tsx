@@ -169,8 +169,8 @@ export default function EntryCard({
             marginTop: "-3px",
             position: "relative",
             zIndex: 1,
-            maskImage: "linear-gradient(to bottom, rgba(0,0,0,0.85) 0%, transparent 100%)",
-            WebkitMaskImage: "linear-gradient(to bottom, rgba(0,0,0,0.85) 0%, transparent 100%)",
+            maskImage: "linear-gradient(to bottom, black 0%, transparent 72%)",
+            WebkitMaskImage: "linear-gradient(to bottom, black 0%, transparent 72%)",
             transition: "opacity 0.7s ease",
           }}
         />
