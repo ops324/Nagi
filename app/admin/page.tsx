@@ -63,9 +63,8 @@ export default function AdminPage() {
     const load = async () => {
       const supabase = createClient();
 
-      // 認証 + 管理者権限チェックは layout.tsx で完了済み。userId 取得のみ行う
-      const { data: claimsData, error } = await supabase.auth.getClaims();
-      if (error || !claimsData?.claims) return;
+      // 認証 + 管理者権限チェックは layout.tsx で完了済み。
+      // データ参照は RLS の is_admin() バイパスに依存する。
 
       // ユーザー一覧
       const { data: usersData } = await supabase

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { Entry, Emotion, EMOTION_COLORS } from "./types";
@@ -71,6 +71,8 @@ type Tab = "journal" | "calendar";
 
 export default function Home() {
   const router = useRouter();
+  // Supabase ブラウザクライアント（@supabase/ssr は内部でシングルトン）を共有
+  const supabase = useMemo(() => createClient(), []);
   const [content, setContent] = useState("");
   const [entries, setEntries] = useState<Entry[]>([]);
   const [loading, setLoading] = useState(false);
@@ -104,31 +106,20 @@ export default function Home() {
   const [showAccountMenu, setShowAccountMenu] = useState(false);
 
   useEffect(() => {
-    const supabase = createClient();
-
-    const loadUser = async () => {
+    const init = async () => {
+      // 認証情報は1度だけ取得し、プロフィールと記録の取得で再利用する
       const { data: claimsData, error } = await supabase.auth.getClaims();
       if (error || !claimsData?.claims) { router.replace("/auth/login"); return; }
       const claims = claimsData.claims;
+      const userId = claims.sub;
       setUserEmail(claims.email ?? null);
 
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("is_admin")
-        .eq("id", claims.sub)
-        .single();
+      // プロフィール（管理者判定）と記録を並列取得
+      const [{ data: profile }, { data }] = await Promise.all([
+        supabase.from("profiles").select("is_admin").eq("id", userId).single(),
+        supabase.from("entries").select("*").eq("user_id", userId).order("created_at", { ascending: false }),
+      ]);
       if (profile?.is_admin) setIsAdmin(true);
-    };
-
-    const loadEntries = async () => {
-      const { data: claimsData, error } = await supabase.auth.getClaims();
-      if (error || !claimsData?.claims) { router.replace("/auth/login"); return; }
-
-      const { data } = await supabase
-        .from("entries")
-        .select("*")
-        .eq("user_id", claimsData.claims.sub)
-        .order("created_at", { ascending: false });
 
       if (data && data.length > 0) {
         // Supabase は snake_case で返すため camelCase に明示マップ（暗黙の列混入を防ぐ）
@@ -154,14 +145,13 @@ export default function Home() {
       }
     };
 
-    loadUser();
-    loadEntries();
+    init();
     const draft = localStorage.getItem("nagi-draft");
     if (draft) setContent(draft);
     // 今週の凪をキャッシュから復元
     const cachedWeekly = localStorage.getItem(`nagi-weekly-${weekStartKey()}`);
     if (cachedWeekly) setWeeklySummary(cachedWeekly);
-  }, []);
+  }, [supabase, router]);
 
   // ローディング中のフェーズサイクル
   useEffect(() => {
@@ -216,7 +206,6 @@ export default function Home() {
       const data = await res.json();
       if (!res.ok) { setError(data.error || "エラーが発生しました"); return; }
 
-      const supabase = createClient();
       const { data: claimsData, error: authErr } = await supabase.auth.getClaims();
       if (authErr || !claimsData?.claims) return;
       const userId = claimsData.claims.sub;
@@ -276,7 +265,6 @@ export default function Home() {
     if (existing) clearTimeout(existing);
 
     const timer = setTimeout(async () => {
-      const supabase = createClient();
       const { error } = await supabase.from("entries").update({ note: value }).eq("id", id);
       if (error) {
         showErrorToast("メモの保存に失敗しました");
@@ -310,7 +298,6 @@ export default function Home() {
     const next = !entry.isFavorited;
     // 楽観更新 → 失敗時はロールバック
     setEntries(prev => prev.map(e => e.id === id ? { ...e, isFavorited: next } : e));
-    const supabase = createClient();
     const { error } = await supabase.from("entries").update({ is_favorited: next }).eq("id", id);
     if (error) {
       setEntries(prev => prev.map(e => e.id === id ? { ...e, isFavorited: !next } : e));
@@ -367,7 +354,6 @@ export default function Home() {
   };
 
   const commitDelete = async (entry: Entry, index: number) => {
-    const supabase = createClient();
     const { error } = await supabase.from("entries").delete().eq("id", entry.id);
     if (error) {
       // 削除失敗：UI から消えた記録を元の位置へ復元
@@ -443,8 +429,6 @@ export default function Home() {
     setEditSaving(true);
     setEditError("");
     try {
-      const supabase = createClient();
-
       // 凪に読みなおしてもらわない場合：本文のみ更新し、ことば・感情は保持
       if (!regenerateOnEdit) {
         const { error: updErr } = await supabase

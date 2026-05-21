@@ -8,20 +8,25 @@ Nagi/
 │   ├── admin/              # 管理者ダッシュボード（is_admin必須）
 │   │   ├── layout.tsx      # サーバー側 is_admin チェック
 │   │   └── page.tsx
-│   ├── api/comment/        # AIコメント+感情抽出 APIルート
-│   ├── auth/               # 認証ページ（login/signup）
-│   │   └── actions/index.ts  # Server Actions（login/signup/logout）
+│   ├── api/                # APIルート（comment / account/delete / weekly-summary）
+│   ├── auth/               # 認証ページ（login/signup はクライアント認証）
+│   │   └── actions/index.ts  # Server Action（logout のみ）
 │   ├── account/            # アカウント設定（認証必須）
-│   ├── components/         # 共有UIコンポーネント
+│   ├── components/         # 共有UIコンポーネント（ui/ にプリミティブ）
+│   ├── lib/about.ts        # 凪の世界観テキスト（ウェルカム等で使用）
 │   ├── globals.css         # デザイントークン・グローバルスタイル
 │   ├── layout.tsx
 │   ├── page.tsx            # メインページ（認証必須）
 │   └── types.ts            # Entry型・感情カラー定義
-├── lib/supabase/
-│   ├── client.ts           # ブラウザ用クライアント
-│   └── server.ts           # サーバー用クライアント（通常・Admin）
+├── lib/
+│   ├── supabase/
+│   │   ├── client.ts       # ブラウザ用クライアント
+│   │   └── server.ts       # サーバー用クライアント（通常・Admin）
+│   ├── origin-check.ts     # Origin/CSRF 検証
+│   └── rate-limit.ts       # 分散レート制限
 ├── prompts/
-│   └── system-prompt.ts    # AIシステムプロンプト（分離管理）
+│   ├── system-prompt.ts        # AIコメント用システムプロンプト
+│   └── weekly-summary-prompt.ts # 週次サマリー用システムプロンプト
 ├── docs/
 │   ├── 仕様書.md
 │   └── supabase-setup.sql
@@ -35,7 +40,7 @@ Nagi/
 |------|------|-----|
 | React コンポーネント | PascalCase | `EmotionCalendar.tsx` |
 | API ルート | Next.js 規約 | `app/api/xxx/route.ts` |
-| Server Actions | camelCase 関数 | `login()`, `signup()`, `logout()` |
+| Server Actions | camelCase 関数 | `logout()`（login/signup はクライアント認証） |
 | Supabase クライアント | `client.ts` / `server.ts` | — |
 | 型定義 | `types.ts` に集約 | `Entry`, `Emotion` |
 | ルール・仕様書 | 日本語可 | `仕様書.md` |
