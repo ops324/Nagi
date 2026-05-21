@@ -195,3 +195,26 @@ $$ language plpgsql security definer;
 
 -- 14. Nagiのことば お気に入り機能（v1.43.0）
 alter table public.entries add column if not exists is_favorited boolean default false;
+
+-- 15. Data API 明示的 GRANT（Supabase 2026-05-30 ポリシー変更対応）
+-- 背景: 2026-10-30 以降、public スキーマのテーブルは明示的 GRANT がないと
+--       supabase-js / PostgREST / GraphQL からアクセス不可になる
+-- 新規テーブル追加時は必ずここに GRANT を追記すること
+
+grant select, update
+  on public.profiles
+  to authenticated;
+
+grant select, insert, update, delete
+  on public.entries
+  to authenticated;
+
+grant select
+  on public.admin_analytics
+  to authenticated;
+
+grant select
+  on public.admin_emotion_stats
+  to authenticated;
+
+-- rate_limits は createAdminClient（service_role）経由のみ使用するため GRANT 不要
