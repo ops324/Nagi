@@ -4,37 +4,9 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
-export async function login(formData: FormData) {
-  const supabase = await createClient();
-
-  const email = formData.get("email") as string;
-  const password = formData.get("password") as string;
-
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
-
-  if (error) {
-    return { error: "メールアドレスまたはパスワードが正しくありません" };
-  }
-
-  revalidatePath("/", "layout");
-  redirect("/");
-}
-
-export async function signup(formData: FormData) {
-  const supabase = await createClient();
-
-  const email = formData.get("email") as string;
-  const password = formData.get("password") as string;
-
-  const { error } = await supabase.auth.signUp({ email, password });
-
-  if (error) {
-    return { error: "登録に失敗しました。もう一度お試しください" };
-  }
-
-  revalidatePath("/", "layout");
-  redirect("/");
-}
+// login / signup は対話的UX（インラインのエラー・ローディング表示）のため
+// クライアント側で signInWithPassword / signUp を直接呼ぶ実装を採用している
+// （app/auth/login/page.tsx・signup/page.tsx）。Server Action は logout のみ。
 
 export async function logout() {
   const supabase = await createClient();

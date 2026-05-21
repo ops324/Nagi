@@ -1,27 +1,5 @@
 "use client";
 
-/*
- * Google Fonts — app/layout.tsx に以下を追加:
- *
- *   import { Zen_Old_Mincho, Noto_Serif_JP } from "next/font/google";
- *
- *   const zenOldMincho = Zen_Old_Mincho({
- *     weight: ["400", "700"],
- *     subsets: ["latin"],
- *     variable: "--font-zen-old-mincho",
- *     display: "swap",
- *   });
- *   const notoSerifJP = Noto_Serif_JP({
- *     weight: ["300", "400", "500"],
- *     subsets: ["latin"],
- *     variable: "--font-noto-serif-jp",
- *     display: "swap",
- *   });
- *
- *   // body className に追加:
- *   // className={`${zenOldMincho.variable} ${notoSerifJP.variable} ...`}
- */
-
 import { useState } from "react";
 import type { Entry, Emotion } from "@/app/types";
 import type { ReactNode } from "react";

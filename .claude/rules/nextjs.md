@@ -4,7 +4,7 @@
 
 - **サーバーコンポーネント優先**: データフェッチはサーバーサイドで行う
 - **Client Component は最小化**: `"use client"` は インタラクション・状態管理が必要な箇所のみ
-- **Server Actions**: フォーム送信・認証操作は `app/auth/actions/index.ts` に集約
+- **Server Actions**: `logout` は `app/auth/actions/index.ts` の Server Action。login/signup は対話的UX（インラインのエラー・ローディング表示）のためクライアント側で `signInWithPassword`/`signUp` を直接呼ぶ
 
 ## APIルート設計
 
@@ -12,7 +12,7 @@
 
 - POST メソッドのみ
 - リクエスト: `{ content: string }`
-- レスポンス: `{ comment, emotions, dominant, energy }`
+- レスポンス: `{ comment, emotions, dominant, energy, insightLevel }`
 - エラー時: `{ error: "メッセージ" }` + 適切なHTTPステータス
 - Anthropic API は **サーバーサイドのみ**（APIキーをクライアントに露出しない）
 
@@ -41,13 +41,15 @@ export async function POST(request: NextRequest) {
 
 ## Server Actions
 
-`app/auth/actions/index.ts` に集約：
+`app/auth/actions/index.ts`：
 
 ```typescript
 "use server";
-// login(), signup(), logout() を定義
+// logout() のみ Server Action として定義
+// login/signup は app/auth/login/page.tsx・signup/page.tsx の
+// クライアント側で signInWithPassword/signUp を直接呼ぶ
+// （インラインのエラー・ローディング表示のため）
 // Supabase サーバークライアントを使用
-// 成功・失敗を返す（redirect はコンポーネント側で処理）
 ```
 
 ## 認証ガード
@@ -80,14 +82,15 @@ type Emotion = { label: string; score: number };
 
 type Entry = {
   id: string;
-  user_id: string;
   content: string;
   comment: string;
   emotions: Emotion[];
   dominant: string;
   energy: number;       // 1〜10
   createdAt: string;    // ISO 8601
-  insightLevel?: string; // "deep" | "moderate" | "gentle"（ステップ3追加予定）
+  insightLevel?: "deep" | "moderate" | "gentle";
+  note?: string;        // 余韻メモ
+  isFavorited?: boolean; // お気に入り
 };
 ```
 
