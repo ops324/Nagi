@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { rateLimit } from "@/lib/rate-limit";
 import { validateOrigin } from "@/lib/origin-check";
 import { Entry } from "@/app/types";
 
@@ -30,6 +31,22 @@ export async function POST(request: NextRequest) {
     const { data: claimsData, error: claimsError } = await supabase.auth.getClaims();
     if (claimsError || !claimsData?.claims) {
       return NextResponse.json({ error: "認証が必要です" }, { status: 401 });
+    }
+
+    const userId = claimsData.claims.sub;
+
+    // レート制限（1ユーザー 10回/時間 — AI生成のコスト保護）
+    const { success, resetAt } = await rateLimit(`weekly:${userId}`, 10, 60 * 60 * 1000);
+    if (!success) {
+      return NextResponse.json(
+        { error: "リクエスト回数の上限に達しました。しばらく経ってからお試しください" },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": String(Math.ceil((resetAt - Date.now()) / 1000)),
+          },
+        }
+      );
     }
 
     const { entries } = await request.json() as { entries: Entry[] };

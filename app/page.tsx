@@ -80,6 +80,8 @@ export default function Home() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<{ entry: Entry; index: number } | null>(null);
   const deleteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [errorToast, setErrorToast] = useState<string | null>(null);
+  const errorToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState("");
   const [editSaving, setEditSaving] = useState(false);
@@ -129,14 +131,19 @@ export default function Home() {
         .order("created_at", { ascending: false });
 
       if (data && data.length > 0) {
-        // Supabase は snake_case (created_at) で返すため camelCase (createdAt) にマップ
-        setEntries(data.map(e => ({
-          ...e,
+        // Supabase は snake_case で返すため camelCase に明示マップ（暗黙の列混入を防ぐ）
+        setEntries(data.map((e): Entry => ({
+          id:           e.id,
+          content:      e.content,
+          comment:      e.comment,
+          emotions:     e.emotions ?? [],
+          dominant:     e.dominant,
+          energy:       e.energy,
           createdAt:    e.created_at,
           insightLevel: e.insight_level,
           note:         e.note ?? "",
           isFavorited:  e.is_favorited ?? false,
-        })) as Entry[]);
+        })));
         // 余韻メモを notes state に初期化
         const initialNotes: Record<string, string> = {};
         data.forEach(e => { initialNotes[e.id] = e.note ?? ""; });
@@ -183,6 +190,12 @@ export default function Home() {
     if (dx > 0 && tab === "calendar") setTab("journal");
   };
 
+  const showErrorToast = (msg: string) => {
+    setErrorToast(msg);
+    if (errorToastTimerRef.current) clearTimeout(errorToastTimerRef.current);
+    errorToastTimerRef.current = setTimeout(() => setErrorToast(null), 4000);
+  };
+
   const handleSubmit = async () => {
     if (!content.trim()) return;
     setLoading(true);
@@ -219,7 +232,7 @@ export default function Home() {
         insightLevel: data.insightLevel || "moderate",
       };
 
-      await supabase.from("entries").insert({
+      const { error: insertErr } = await supabase.from("entries").insert({
         id:            entry.id,
         user_id:       userId,
         content:       entry.content,
@@ -230,6 +243,11 @@ export default function Home() {
         created_at:    entry.createdAt,    // camelCase → snake_case
         insight_level: entry.insightLevel, // camelCase → snake_case
       });
+      if (insertErr) {
+        // 保存失敗：UI に追加せず下書きも残し、ユーザーに再試行を促す
+        showErrorToast("記録の保存に失敗しました。もう一度お試しください");
+        return;
+      }
       setEntries([entry, ...entries]);
       setNewEntryId(entry.id);
       setTimeout(() => setNewEntryId(null), 4000);
@@ -259,7 +277,11 @@ export default function Home() {
 
     const timer = setTimeout(async () => {
       const supabase = createClient();
-      await supabase.from("entries").update({ note: value }).eq("id", id);
+      const { error } = await supabase.from("entries").update({ note: value }).eq("id", id);
+      if (error) {
+        showErrorToast("メモの保存に失敗しました");
+        return;
+      }
       setSavedNoteIds(prev => new Set(prev).add(id));
       setTimeout(() => setSavedNoteIds(prev => {
         const next = new Set(prev); next.delete(id); return next;
@@ -286,9 +308,14 @@ export default function Home() {
     const entry = entries.find(e => e.id === id);
     if (!entry) return;
     const next = !entry.isFavorited;
-    const supabase = createClient();
-    await supabase.from("entries").update({ is_favorited: next }).eq("id", id);
+    // 楽観更新 → 失敗時はロールバック
     setEntries(prev => prev.map(e => e.id === id ? { ...e, isFavorited: next } : e));
+    const supabase = createClient();
+    const { error } = await supabase.from("entries").update({ is_favorited: next }).eq("id", id);
+    if (error) {
+      setEntries(prev => prev.map(e => e.id === id ? { ...e, isFavorited: !next } : e));
+      showErrorToast("お気に入りの更新に失敗しました");
+    }
   };
 
   const getMemoryEntry = (): { entry: Entry; label: string } | null => {
@@ -339,9 +366,19 @@ export default function Home() {
     }
   };
 
-  const commitDelete = async (id: string) => {
+  const commitDelete = async (entry: Entry, index: number) => {
     const supabase = createClient();
-    await supabase.from("entries").delete().eq("id", id);
+    const { error } = await supabase.from("entries").delete().eq("id", entry.id);
+    if (error) {
+      // 削除失敗：UI から消えた記録を元の位置へ復元
+      setEntries(prev => {
+        if (prev.some(e => e.id === entry.id)) return prev;
+        const next = [...prev];
+        next.splice(Math.min(index, next.length), 0, entry);
+        return next;
+      });
+      showErrorToast("記録の削除に失敗しました");
+    }
   };
 
   // 楽観的削除：UIから即座に外し、トーストで5秒間アンドゥ可能にする
@@ -352,7 +389,7 @@ export default function Home() {
       clearTimeout(deleteTimerRef.current);
       deleteTimerRef.current = null;
     }
-    if (pendingDelete) commitDelete(pendingDelete.entry.id);
+    if (pendingDelete) commitDelete(pendingDelete.entry, pendingDelete.index);
 
     const index = entries.findIndex((e) => e.id === id);
     const entry = entries[index];
@@ -361,7 +398,7 @@ export default function Home() {
     setEntries((prev) => prev.filter((e) => e.id !== id));
     setPendingDelete({ entry, index });
     deleteTimerRef.current = setTimeout(() => {
-      commitDelete(entry.id);
+      commitDelete(entry, index);
       setPendingDelete(null);
       deleteTimerRef.current = null;
     }, 5000);
@@ -1234,6 +1271,11 @@ export default function Home() {
           actionLabel="元に戻す"
           onAction={handleUndoDelete}
         />
+      )}
+
+      {/* エラートースト（保存・更新・削除の失敗時） */}
+      {errorToast && !pendingDelete && (
+        <Toast message={errorToast} />
       )}
     </div>
   );
