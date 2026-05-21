@@ -38,9 +38,22 @@ export async function DELETE(request: NextRequest) {
     // createAdminClient を使用（lib/supabase/server.ts に集約）
     const adminClient = await createAdminClient();
 
-    // entries と profiles は CASCADE DELETE または手動削除
-    await adminClient.from("entries").delete().eq("user_id", userId);
-    await adminClient.from("profiles").delete().eq("id", userId);
+    // entries → profiles の順で削除（外部キー制約のため逆順にしない）
+    const { error: entriesError } = await adminClient.from("entries").delete().eq("user_id", userId);
+    if (entriesError) {
+      if (process.env.NODE_ENV === "development") {
+        console.error("Account delete error (entries):", entriesError);
+      }
+      return NextResponse.json({ error: "Failed to delete account" }, { status: 500 });
+    }
+
+    const { error: profilesError } = await adminClient.from("profiles").delete().eq("id", userId);
+    if (profilesError) {
+      if (process.env.NODE_ENV === "development") {
+        console.error("Account delete error (profiles):", profilesError);
+      }
+      return NextResponse.json({ error: "Failed to delete account" }, { status: 500 });
+    }
 
     // auth ユーザー削除
     const { error: deleteError } = await adminClient.auth.admin.deleteUser(userId);

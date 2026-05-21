@@ -14,7 +14,9 @@
 - `.env.local` は `.gitignore` で Git 管理外
 - `ANTHROPIC_API_KEY` は `app/api/` のAPIルートのみ使用
 - `SUPABASE_SERVICE_ROLE_KEY` は `NEXT_PUBLIC_` プレフィックスを付けない
-- `SUPABASE_SERVICE_ROLE_KEY` は `app/api/account/delete/route.ts` のみ使用（`createAdminClient`）
+- `SUPABASE_SERVICE_ROLE_KEY`（`createAdminClient`）の使用は次の2箇所に限定する：
+  - `app/api/account/delete/route.ts`（アカウント削除：entries/profiles/auth ユーザー削除）
+  - `lib/rate-limit.ts`（分散レート制限の RPC `check_rate_limit` 呼び出し。RLS 無効の `rate_limits` テーブルへサーバーサイドからアクセスするため。APIルート経由でのみ呼ばれる）
 
 ## 認証ガード（proxy.ts）
 

@@ -12,6 +12,10 @@ const VALID_EMOTIONS = [
 
 const VALID_INSIGHT_LEVELS = ["deep", "moderate", "gentle"] as const;
 
+// AI 出力のパース失敗・空コメント時に用いる穏当な既定文（凪のトーン・感嘆符なし）
+const FALLBACK_COMMENT =
+  "今日のことばを受け取りました。いま、ここに記されたものを静かに見つめています。";
+
 const client = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
@@ -94,18 +98,23 @@ ${content}
       message.content[0].type === "text" ? message.content[0].text : "";
 
     // ── JSON抽出 + スキーマ検証 ──
+    // 最初の { から最後の } まで（貪欲）を抽出。emotions 配列の入れ子 {} を含むため非貪欲にはしない。
+    // パース失敗時も 500 にせず、各フィールドのデフォルトで穏当なレスポンスを返す。
     const jsonMatch = rawText.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      throw new Error("JSON parse failed");
+    let parsed: Record<string, unknown> = {};
+    if (jsonMatch) {
+      try {
+        parsed = JSON.parse(jsonMatch[0]);
+      } catch {
+        parsed = {};
+      }
     }
-
-    const parsed = JSON.parse(jsonMatch[0]);
 
     // スキーマ検証: 各フィールドを安全にバリデート
     const comment =
-      typeof parsed.comment === "string" && parsed.comment.length > 0
+      typeof parsed.comment === "string" && parsed.comment.trim().length > 0
         ? parsed.comment.slice(0, 300) // 最大300文字に制限
-        : "";
+        : FALLBACK_COMMENT; // 空・欠落時は穏当な既定文（空コメント保存を防ぐ）
 
     const emotions = Array.isArray(parsed.emotions)
       ? parsed.emotions
