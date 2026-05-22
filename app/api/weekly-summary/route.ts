@@ -4,10 +4,12 @@ import { createClient } from "@/lib/supabase/server";
 import { rateLimit } from "@/lib/rate-limit";
 import { validateOrigin } from "@/lib/origin-check";
 import { WEEKLY_SUMMARY_PROMPT } from "@/prompts/weekly-summary-prompt";
+import { createMessageWithRetry, isRetryableError } from "@/lib/anthropic-retry";
 import { Entry } from "@/app/types";
 
 const client = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
+  maxRetries: 0, // リトライは createMessageWithRetry で制御する
 });
 
 export async function POST(request: NextRequest) {
@@ -52,7 +54,7 @@ export async function POST(request: NextRequest) {
       })
       .join("\n");
 
-    const message = await client.messages.create({
+    const message = await createMessageWithRetry(client, {
       model: "claude-haiku-4-5-20251001",
       max_tokens: 400,
       system: WEEKLY_SUMMARY_PROMPT,
@@ -76,6 +78,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ summary });
   } catch (error) {
     if (process.env.NODE_ENV === "development") console.error("weekly-summary error:", error);
+    if (isRetryableError(error)) {
+      return NextResponse.json(
+        { error: "ただいま混み合っています。少し時間をおいてもう一度お試しください" },
+        { status: 503 }
+      );
+    }
     return NextResponse.json({ error: "生成に失敗しました" }, { status: 500 });
   }
 }

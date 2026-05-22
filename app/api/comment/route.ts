@@ -4,6 +4,7 @@ import { SYSTEM_PROMPT } from "@/prompts/system-prompt";
 import { createClient } from "@/lib/supabase/server";
 import { rateLimit } from "@/lib/rate-limit";
 import { validateOrigin } from "@/lib/origin-check";
+import { createMessageWithRetry, isRetryableError } from "@/lib/anthropic-retry";
 
 const VALID_EMOTIONS = [
   "喜び", "穏やか", "希望", "充実", "感謝", "安心",
@@ -18,6 +19,7 @@ const FALLBACK_COMMENT =
 
 const client = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
+  maxRetries: 0, // リトライは createMessageWithRetry で制御する
 });
 
 export async function POST(request: NextRequest) {
@@ -75,8 +77,8 @@ export async function POST(request: NextRequest) {
       charCount <= 150 ? { commentRange: "60〜100",  maxTokens: 500 } :
                          { commentRange: "100〜150", maxTokens: 800 };
 
-    // ── AI コメント生成 ──
-    const message = await client.messages.create({
+    // ── AI コメント生成（一時エラーはリトライ） ──
+    const message = await createMessageWithRetry(client, {
       model: "claude-haiku-4-5-20251001",
       max_tokens: tier.maxTokens,
       system: SYSTEM_PROMPT,
@@ -167,6 +169,14 @@ ${content}
       console.error("API error:", error);
     } else {
       console.error("API error: comment generation failed");
+    }
+    // Anthropic の一時的な過負荷（529 等）はリトライ後も失敗しうるため、
+    // 恒久的な失敗(500)と区別して 503 + 再試行を促すメッセージを返す
+    if (isRetryableError(error)) {
+      return NextResponse.json(
+        { error: "ただいま混み合っています。少し時間をおいてもう一度お試しください" },
+        { status: 503 }
+      );
     }
     return NextResponse.json(
       { error: "コメントの生成に失敗しました" },
