@@ -5,10 +5,23 @@
 
 import { NextRequest, NextResponse } from "next/server";
 
+// Vercel が自動付与するシステム環境変数から、当デプロイ自身のURLを許可に加える。
+// VERCEL_BRANCH_URL: ブランチプレビューの固定エイリアス（例: nagi-git-xxx-team.vercel.app）
+// VERCEL_URL: デプロイ毎のハッシュURL
+// VERCEL_PROJECT_PRODUCTION_URL: 本番URL
+const VERCEL_ORIGINS = [
+  process.env.VERCEL_BRANCH_URL,
+  process.env.VERCEL_URL,
+  process.env.VERCEL_PROJECT_PRODUCTION_URL,
+]
+  .filter(Boolean)
+  .map((host) => `https://${host}`);
+
 const ALLOWED_ORIGINS = [
   process.env.NEXT_PUBLIC_SITE_URL, // 本番URL（Vercel環境変数で設定）
   "http://localhost:3000",
   "http://localhost:3001",
+  ...VERCEL_ORIGINS,
 ].filter(Boolean);
 
 /**
@@ -25,10 +38,13 @@ export function validateOrigin(request: NextRequest): NextResponse | null {
   // 許可されたOriginか確認
   if (ALLOWED_ORIGINS.includes(origin)) return null;
 
-  // Vercelプレビューデプロイ対応（自プロジェクトのURLのみ許可）
+  // Vercelプレビューデプロイ対応（当チームの nagi プロジェクトのプレビューのみ許可）
+  // ブランチプレビューURLはハイフンを多く含む（例:
+  // nagi-git-<branch>-flowmateops-5002s-projects.vercel.app）ため、ハイフンを許容しつつ
+  // チームスラッグでスコープして他プロジェクトの nagi-* を弾く。
   if (
     origin === "https://nagi-xi.vercel.app" ||
-    origin.match(/^https:\/\/nagi-[a-z0-9]+-[a-z0-9]+\.vercel\.app$/)
+    /^https:\/\/nagi-[a-z0-9-]+-flowmateops-5002s-projects\.vercel\.app$/.test(origin)
   ) return null;
 
   return NextResponse.json(
