@@ -120,6 +120,12 @@ export default function HomeClient({ initialEntries, userEmail, isAdmin }: HomeC
     if (cachedWeekly) setWeeklySummary(cachedWeekly);
   }, []);
 
+  // ウェルカムを閉じた直後、モバイルのアプリ内ブラウザで残るスクロールずれを最上部に戻す
+  // （Radix Dialog の自動フォーカス／scroll-lock 起因で本文上部が sticky ヘッダーに隠れるのを防ぐ）
+  useEffect(() => {
+    if (!showWelcome) window.scrollTo(0, 0);
+  }, [showWelcome]);
+
   // ローディング中のフェーズサイクル
   useEffect(() => {
     if (!loading) { setLoadingPhase(0); return; }
@@ -1179,6 +1185,8 @@ export default function HomeClient({ initialEntries, userEmail, isAdmin }: HomeC
         <RadixDialog.Portal>
           <RadixDialog.Content
             aria-describedby={undefined}
+            onOpenAutoFocus={(e) => e.preventDefault()}
+            onCloseAutoFocus={(e) => e.preventDefault()}
             className="fixed inset-0 z-50 flex flex-col items-center justify-center px-6 welcome-fade-in focus:outline-none"
             style={{ backgroundColor: "var(--bg)" }}
           >
