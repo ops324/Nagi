@@ -5,10 +5,12 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 
+const DEV_AUTOFILL = process.env.NEXT_PUBLIC_DEV_AUTOFILL === "1";
+
 export default function LoginPage() {
   const router = useRouter();
   const supabase = createClient();
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(DEV_AUTOFILL ? "dev@nagi.local" : "");
 
   useEffect(() => {
     const checkAlreadyAuthenticated = async () => {
@@ -20,7 +22,7 @@ export default function LoginPage() {
     checkAlreadyAuthenticated();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  const [password, setPassword] = useState("");
+  const [password, setPassword] = useState(DEV_AUTOFILL ? "nagidev" : "");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 

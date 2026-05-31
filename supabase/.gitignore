@@ -1,0 +1,7 @@
+# Supabase CLI 作業用ディレクトリ（自動生成・コミット対象外）
+.branches
+.temp
+snippets
+
+# ローカル限定の環境ファイル
+.env
