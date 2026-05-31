@@ -1,5 +1,19 @@
 import type { NextConfig } from "next";
 
+// connect-src は本番リモート Supabase に加えて、ローカル開発時の
+// NEXT_PUBLIC_SUPABASE_URL（例: http://localhost:54421）も許可する。
+// 本番ビルド（Vercel）では NEXT_PUBLIC_SUPABASE_URL が prod URL に解決されるため
+// 重複排除して 1 件にまとめる。
+const PROD_SUPABASE_URL = "https://ahrppujhrfvwimfmropx.supabase.co";
+const connectSrcSources = new Set<string>([
+  "'self'",
+  PROD_SUPABASE_URL,
+  "https://api.anthropic.com",
+]);
+if (process.env.NEXT_PUBLIC_SUPABASE_URL) {
+  connectSrcSources.add(process.env.NEXT_PUBLIC_SUPABASE_URL);
+}
+
 const securityHeaders = [
   {
     key: "X-Content-Type-Options",
@@ -33,7 +47,7 @@ const securityHeaders = [
       "style-src 'self' 'unsafe-inline'", // Tailwind inline styles
       "img-src 'self' data: https:",
       "font-src 'self'",
-      "connect-src 'self' https://ahrppujhrfvwimfmropx.supabase.co https://api.anthropic.com",
+      `connect-src ${Array.from(connectSrcSources).join(" ")}`,
       "frame-ancestors 'none'",
       "base-uri 'self'",
       "form-action 'self'",
