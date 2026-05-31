@@ -21,6 +21,7 @@ const ALLOWED_ORIGINS = [
   process.env.NEXT_PUBLIC_SITE_URL, // 本番URL（Vercel環境変数で設定）
   "http://localhost:3000",
   "http://localhost:3001",
+  "http://localhost:3100", // E2E テスト用（playwright.config.ts の webServer ポート）
   ...VERCEL_ORIGINS,
 ].filter(Boolean);
 
