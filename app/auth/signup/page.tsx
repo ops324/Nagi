@@ -127,6 +127,12 @@ export default function SignupPage() {
           </Link>
         </p>
 
+        <p className="text-center text-xs mt-3" style={{ color: "var(--text-muted)" }}>
+          <Link href="/try" className="underline" style={{ color: "var(--text-secondary)" }}>
+            登録のまえに、凪を試してみる
+          </Link>
+        </p>
+
         <p className="text-center text-xs mt-4" style={{ color: "var(--text-muted)" }}>
           ご登録の前に{" "}
           <Link href="/terms" className="underline" style={{ color: "var(--text-muted)" }}>

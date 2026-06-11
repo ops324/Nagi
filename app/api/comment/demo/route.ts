@@ -1,9 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
 import { rateLimit } from "@/lib/rate-limit";
 import { validateOrigin } from "@/lib/origin-check";
 import { isRetryableError } from "@/lib/anthropic-retry";
 import { generateComment } from "@/lib/generate-comment";
+
+// 登録前のお試し体験（/try）用のコメント生成API。
+// 本番（/api/comment）との違い:
+//   - 認証なし（未ログインでも呼べる）
+//   - レート制限は user_id ではなく IP 単位（乱用・コストのバックストップ）
+//   - 入力上限を本番より短く設定（コスト抑制）
+// ※ 体験を「1回だけ」に絞るのは UI（DemoClient）側の責務。ここは乱用防止が目的。
+
+// IPあたりの上限（共有IP=社内NAT・モバイルキャリアの正当な利用者を巻き込まない緩めの値）
+const DEMO_RATE_LIMIT = 5;
+const DEMO_RATE_WINDOW_MS = 60 * 60 * 1000; // 1時間
+const DEMO_MAX_CHARS = 2000;
 
 export async function POST(request: NextRequest) {
   try {
@@ -11,26 +22,19 @@ export async function POST(request: NextRequest) {
     const originError = validateOrigin(request);
     if (originError) return originError;
 
-    // ── 認証チェック ──
-    const supabase = await createClient();
-    const { data: claimsData, error: claimsError } = await supabase.auth.getClaims();
+    // ── IP レート制限（乱用バックストップ） ──
+    const ip =
+      request.headers.get("x-forwarded-for")?.split(",")[0].trim() || "unknown";
 
-    if (claimsError || !claimsData?.claims) {
-      return NextResponse.json({ error: "認証が必要です" }, { status: 401 });
-    }
-
-    const userId = claimsData.claims.sub;
-
-    // ── レート制限（1ユーザー 20回/時間） ──
-    const { success, remaining, resetAt } = await rateLimit(
-      `comment:${userId}`,
-      20,
-      60 * 60 * 1000
+    const { success, resetAt } = await rateLimit(
+      `demo:${ip}`,
+      DEMO_RATE_LIMIT,
+      DEMO_RATE_WINDOW_MS
     );
 
     if (!success) {
       return NextResponse.json(
-        { error: "リクエスト回数の上限に達しました。しばらく経ってからお試しください" },
+        { error: "お試しの上限に達しました。登録すると、続けてご利用いただけます" },
         {
           status: 429,
           headers: {
@@ -48,32 +52,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "内容が空です" }, { status: 400 });
     }
 
-    // 入力文字数制限（過大なリクエスト防止）
-    if (content.length > 5000) {
-      return NextResponse.json({ error: "入力が長すぎます（5000文字以内）" }, { status: 400 });
+    if (content.length > DEMO_MAX_CHARS) {
+      return NextResponse.json(
+        { error: `入力が長すぎます（${DEMO_MAX_CHARS}文字以内）` },
+        { status: 400 }
+      );
     }
 
     // ── AI コメント生成（共通ロジック・一時エラーはリトライ） ──
     const { comment, emotions, dominant, energy, insightLevel } =
       await generateComment(content);
 
-    return NextResponse.json(
-      { comment, emotions, dominant, energy, insightLevel },
-      {
-        headers: {
-          "X-RateLimit-Remaining": String(remaining),
-        },
-      }
-    );
+    return NextResponse.json({ comment, emotions, dominant, energy, insightLevel });
   } catch (error) {
-    // 本番環境では詳細をログに出さない
     if (process.env.NODE_ENV === "development") {
-      console.error("API error:", error);
+      console.error("Demo API error:", error);
     } else {
-      console.error("API error: comment generation failed");
+      console.error("Demo API error: comment generation failed");
     }
-    // Anthropic の一時的な過負荷（529 等）はリトライ後も失敗しうるため、
-    // 恒久的な失敗(500)と区別して 503 + 再試行を促すメッセージを返す
     if (isRetryableError(error)) {
       return NextResponse.json(
         { error: "ただいま混み合っています。少し時間をおいてもう一度お試しください" },

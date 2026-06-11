@@ -204,6 +204,7 @@ export default function EntryCard({
               )}
               {menuSlot}
 
+              {onToggleFavorite && (
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -245,6 +246,7 @@ export default function EntryCard({
                   <path d="M10 1.5 L11.8 8.2 L18.5 10 L11.8 11.8 L10 18.5 L8.2 11.8 L1.5 10 L8.2 8.2 Z" />
                 </svg>
               </button>
+              )}
             </div>
           </div>
 
@@ -452,7 +454,8 @@ export default function EntryCard({
             {entry.comment}
           </p>
 
-          {/* 余韻メモ */}
+          {/* 余韻メモ（ハンドラ未指定＝お試し等では非表示） */}
+          {onNoteChange && (
           <div style={{ marginTop: "20px" }}>
             <div
               style={{
@@ -489,7 +492,6 @@ export default function EntryCard({
             <textarea
               value={entry.note ?? ""}
               onChange={(e) => onNoteChange?.(entry.id, e.target.value)}
-              readOnly={!onNoteChange}
               placeholder="読み返したとき、何か残しておきたいことがあれば…"
               rows={2}
               style={{
@@ -507,10 +509,11 @@ export default function EntryCard({
                 letterSpacing: "0.04em",
                 color: "var(--text-secondary)",
                 fontWeight: 300,
-                cursor: onNoteChange ? "text" : "default",
+                cursor: "text",
               }}
             />
           </div>
+          )}
         </div>
       </article>
     </>

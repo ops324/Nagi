@@ -130,6 +130,11 @@ export default function LoginPage() {
               新規登録
             </Link>
           </p>
+          <p className="pt-2" style={{ color: "var(--text-muted)" }}>
+            <Link href="/try" className="underline" style={{ color: "var(--text-secondary)" }}>
+              登録のまえに、凪を試してみる
+            </Link>
+          </p>
         </div>
       </div>
     </div>

@@ -32,7 +32,8 @@ export async function updateSession(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // 公開ページ・コールバックは通過
-  const publicPaths = ["/privacy", "/terms", "/auth/callback"];
+  // /try（登録前のお試し体験）と /api/comment/demo は未認証で利用するため公開扱い
+  const publicPaths = ["/privacy", "/terms", "/auth/callback", "/try", "/api/comment/demo"];
   if (publicPaths.some((p) => pathname.startsWith(p))) {
     return supabaseResponse;
   }
