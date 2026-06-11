@@ -131,9 +131,12 @@ export default function DemoClient() {
       <p className="text-sm leading-relaxed text-center mb-3" style={{ color: "var(--text-secondary)" }}>
         {ABOUT_INTRO}
       </p>
-      <p className="text-xs leading-relaxed text-center mb-8" style={{ color: "var(--text-muted)" }}>
-        ここで書いたことばは保存されません。登録のまえに、一度だけ試してみてください。
-      </p>
+      {/* 保存されない旨の注記は入力前のみ。応答後は下部CTAの注記と重複するため隠す */}
+      {!result && (
+        <p className="text-xs leading-relaxed text-center mb-8" style={{ color: "var(--text-muted)" }}>
+          ここで書いたことばは保存されません。登録のまえに、一度だけ試してみてください。
+        </p>
+      )}
 
       {/* 入力カード（応答前のみ表示） */}
       {!result && (
