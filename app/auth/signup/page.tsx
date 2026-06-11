@@ -48,7 +48,12 @@ export default function SignupPage() {
 
         {/* ロゴ */}
         <div className="text-center mb-10">
-          <h1 className="text-4xl font-extralight tracking-[0.3em]" style={{ color: "var(--text-secondary)" }}>凪</h1>
+          <div className="flex items-center justify-center gap-3">
+            <div className="w-12 h-12 rounded-2xl overflow-hidden">
+              <img src="/icon-nagi.png" alt="Nagi" className="w-12 h-12 block" />
+            </div>
+            <h1 className="text-4xl font-extralight tracking-[0.3em]" style={{ color: "var(--text-secondary)" }}>凪</h1>
+          </div>
           <p className="text-xs tracking-widest mt-2" style={{ color: "var(--text-muted)" }}>Nagi · 自己観察の記録</p>
         </div>
 
