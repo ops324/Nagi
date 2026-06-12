@@ -30,6 +30,7 @@ export default async function Home() {
     insightLevel: e.insight_level,
     note:         e.note ?? "",
     isFavorited:  e.is_favorited ?? false,
+    recordedAt:   e.recorded_at ?? e.created_at,
   }));
 
   return (

@@ -111,6 +111,14 @@ export default function HomeClient({ initialEntries, userEmail, isAdmin }: HomeC
   const [showWelcome, setShowWelcome] = useState(initialEntries.length === 0);
   const [showAccountMenu, setShowAccountMenu] = useState(false);
 
+  // ── 遡及記録（v1.60.0）──
+  // 過去 3 日以内の任意の時刻を「記録対象の日時」として書ける。
+  // committedBackdate が null のときは "今" として扱う。
+  const [composerOpen, setComposerOpen] = useState(false);
+  const [pendingDayOffset, setPendingDayOffset] = useState(0);
+  const [pendingTimeSlot, setPendingTimeSlot] = useState(0); // 0..95（15分刻み）
+  const [committedBackdate, setCommittedBackdate] = useState<{ dayOffset: number; timeSlot: number } | null>(null);
+
   // 記録・ユーザー情報はサーバー（app/page.tsx）から props で受け取る。
   // ここではブラウザ専用の下書き・今週の凪キャッシュのみ復元する。
   useEffect(() => {
@@ -159,6 +167,60 @@ export default function HomeClient({ initialEntries, userEmail, isAdmin }: HomeC
     errorToastTimerRef.current = setTimeout(() => setErrorToast(null), 4000);
   };
 
+  // ── 遡及記録ヘルパー ──
+  const DAY_LABELS = ["今日", "昨日", "一昨日", "3日前"] as const;
+  const slotToHHMM = (slot: number) => {
+    const h = Math.floor(slot / 4);
+    const m = (slot % 4) * 15;
+    return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+  };
+  const currentTimeSlot = () => {
+    const d = new Date();
+    return d.getHours() * 4 + Math.floor(d.getMinutes() / 15);
+  };
+  const dateForOffset = (off: number) => {
+    const d = new Date();
+    d.setDate(d.getDate() - off);
+    return d;
+  };
+  const relDayLabel = (off: number) => {
+    const d = dateForOffset(off);
+    return `${DAY_LABELS[off]} ${d.getMonth() + 1}/${d.getDate()}`;
+  };
+  const buildBackdateDate = (dayOffset: number, timeSlot: number) => {
+    const d = new Date();
+    d.setDate(d.getDate() - dayOffset);
+    d.setHours(Math.floor(timeSlot / 4), (timeSlot % 4) * 15, 0, 0);
+    return d;
+  };
+  // 「今日」を選んでいる間は未来の時刻を選べない（CHECK 制約と整合）
+  const maxSlotForOffset = (off: number) => (off === 0 ? currentTimeSlot() : 95);
+
+  const openComposer = () => {
+    if (committedBackdate) {
+      setPendingDayOffset(committedBackdate.dayOffset);
+      setPendingTimeSlot(committedBackdate.timeSlot);
+    } else {
+      setPendingDayOffset(0);
+      setPendingTimeSlot(currentTimeSlot());
+    }
+    setComposerOpen(true);
+  };
+  const handlePendingDayChange = (off: number) => {
+    setPendingDayOffset(off);
+    // 「今日」に戻したときは現在時刻を超えていたら現在時刻に丸める
+    const max = maxSlotForOffset(off);
+    setPendingTimeSlot(prev => Math.min(prev, max));
+  };
+  const confirmComposer = () => {
+    setCommittedBackdate({ dayOffset: pendingDayOffset, timeSlot: pendingTimeSlot });
+    setComposerOpen(false);
+  };
+  const resetComposer = () => {
+    setCommittedBackdate(null);
+    setComposerOpen(false);
+  };
+
   const handleSubmit = async () => {
     if (!content.trim()) return;
     setLoading(true);
@@ -183,6 +245,20 @@ export default function HomeClient({ initialEntries, userEmail, isAdmin }: HomeC
       if (authErr || !claimsData?.claims) return;
       const userId = claimsData.claims.sub;
 
+      // 遡及記録：committedBackdate があれば過去日時、なければ「今」
+      const now = new Date();
+      const createdAtDate = committedBackdate
+        ? buildBackdateDate(committedBackdate.dayOffset, committedBackdate.timeSlot)
+        : now;
+      // 3 日境界の二重防御（UI 側でも制限済み・DB CHECK でも防御）
+      const gapMs = now.getTime() - createdAtDate.getTime();
+      if (gapMs < 0 || gapMs > 3 * 24 * 60 * 60 * 1000) {
+        setError("3日以内の時刻を選んでください");
+        return;
+      }
+      const recordedAt = now.toISOString();
+      const createdAt = createdAtDate.toISOString();
+
       const entry: Entry = {
         id: Date.now().toString(),
         content,
@@ -190,8 +266,9 @@ export default function HomeClient({ initialEntries, userEmail, isAdmin }: HomeC
         emotions:     data.emotions || [],
         dominant:     data.dominant || "穏やか",
         energy:       data.energy   || 5,
-        createdAt:    new Date().toISOString(),
+        createdAt,
         insightLevel: data.insightLevel || "moderate",
+        recordedAt,
       };
 
       const { error: insertErr } = await supabase.from("entries").insert({
@@ -204,6 +281,7 @@ export default function HomeClient({ initialEntries, userEmail, isAdmin }: HomeC
         energy:        entry.energy,
         created_at:    entry.createdAt,    // camelCase → snake_case
         insight_level: entry.insightLevel, // camelCase → snake_case
+        recorded_at:   recordedAt,         // 実際に書いた瞬間（v1.60.0）
       });
       if (insertErr) {
         // 保存失敗：UI に追加せず下書きも残し、ユーザーに再試行を促す
@@ -221,6 +299,8 @@ export default function HomeClient({ initialEntries, userEmail, isAdmin }: HomeC
       }, 120);
       localStorage.removeItem("nagi-draft");
       setContent("");
+      // 遡及記録の選択は送信ごとにリセット（次は安全側「今」から）
+      setCommittedBackdate(null);
     } catch {
       setError("通信エラーが発生しました");
     } finally {
@@ -653,23 +733,68 @@ export default function HomeClient({ initialEntries, userEmail, isAdmin }: HomeC
 
               {error && <p className="text-xs mt-2" style={{ color: "#fca5a5" }}>{error}</p>}
               {!loading && (
-                <div className="flex items-center justify-between mt-4">
-                  <span className="text-xs" style={{ color: "var(--text-muted)" }}>
-                    {content.length > 4800 ? `${content.length} / 5000` : ""}
-                  </span>
-                  <button
-                    onClick={handleSubmit}
-                    disabled={!content.trim()}
-                    className="px-7 py-2.5 rounded-full text-xs tracking-widest transition-all"
-                    style={{
-                      backgroundColor: !content.trim() ? "var(--bg-disabled)" : "var(--green)",
-                      color:           !content.trim() ? "var(--text-disabled)" : "var(--color-btn-text)",
-                      cursor:          !content.trim() ? "not-allowed" : "pointer",
-                    }}
-                  >
-                    記録する
-                  </button>
-                </div>
+                <>
+                  {/* 遡及記録の入口（v1.60.0）：通常は薄いリンク、選択中はステータスチップ */}
+                  <div className="mt-3 flex items-center min-h-[1.75rem]">
+                    {committedBackdate ? (
+                      <div
+                        className="inline-flex items-center gap-2 pl-3 pr-2 py-1 rounded-full text-xs"
+                        style={{
+                          backgroundColor: "var(--green-light)",
+                          color: "var(--color-btn-text)",
+                        }}
+                      >
+                        <button
+                          type="button"
+                          onClick={openComposer}
+                          className="inline-flex items-center gap-1.5 hover:opacity-80 transition-opacity"
+                          aria-label="記録対象の時刻を変更"
+                        >
+                          <span aria-hidden>🕒</span>
+                          <span>{relDayLabel(committedBackdate.dayOffset)} {slotToHHMM(committedBackdate.timeSlot)}</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setCommittedBackdate(null)}
+                          className="flex items-center justify-center w-5 h-5 rounded-full hover:bg-black/10 transition-colors"
+                          aria-label="今に戻す"
+                        >
+                          <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                            <path d="M1.5 1.5l7 7M8.5 1.5l-7 7" />
+                          </svg>
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={openComposer}
+                        className="inline-flex items-center gap-1.5 text-xs hover:opacity-80 transition-opacity"
+                        style={{ color: "var(--text-muted)" }}
+                      >
+                        <span aria-hidden>🕒</span>
+                        <span>少し前のこととして書く</span>
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="flex items-center justify-between mt-3">
+                    <span className="text-xs" style={{ color: "var(--text-muted)" }}>
+                      {content.length > 4800 ? `${content.length} / 5000` : ""}
+                    </span>
+                    <button
+                      onClick={handleSubmit}
+                      disabled={!content.trim()}
+                      className="px-7 py-2.5 rounded-full text-xs tracking-widest transition-all"
+                      style={{
+                        backgroundColor: !content.trim() ? "var(--bg-disabled)" : "var(--green)",
+                        color:           !content.trim() ? "var(--text-disabled)" : "var(--color-btn-text)",
+                        cursor:          !content.trim() ? "not-allowed" : "pointer",
+                      }}
+                    >
+                      記録する
+                    </button>
+                  </div>
+                </>
               )}
             </div>
 
@@ -1173,6 +1298,120 @@ export default function HomeClient({ initialEntries, userEmail, isAdmin }: HomeC
                   ログアウト
                 </button>
               </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════════════════════
+          少し前のこととして書く（v1.60.0 / ボトムシート）
+      ══════════════════════════════ */}
+      {composerOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="少し前のこととして書く"
+          className="fixed inset-0 z-50 account-sheet-overlay"
+          onClick={() => setComposerOpen(false)}
+        >
+          <div
+            className="absolute bottom-0 left-0 right-0 account-sheet"
+            style={{
+              backgroundColor: "var(--bg-card)",
+              borderRadius: "1.5rem 1.5rem 0 0",
+              borderTop: "1px solid var(--border)",
+              paddingBottom: "env(safe-area-inset-bottom, 1.5rem)",
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            {/* ドラッグハンドル */}
+            <div className="w-10 h-1 rounded-full mx-auto mt-3 mb-5"
+              style={{ backgroundColor: "var(--border)" }} />
+
+            <div className="px-6 pb-6">
+              <p className="text-sm tracking-widest mb-1" style={{ color: "var(--text-muted)" }}>
+                少し前のこととして書く
+              </p>
+              <p className="text-xs mb-5" style={{ color: "var(--text-faint)" }}>
+                3日以内の任意の時刻を選べます
+              </p>
+
+              {/* 日付チップ */}
+              <div className="grid grid-cols-2 gap-2 mb-5">
+                {[0, 1, 2, 3].map((off) => {
+                  const active = pendingDayOffset === off;
+                  return (
+                    <button
+                      key={off}
+                      type="button"
+                      onClick={() => handlePendingDayChange(off)}
+                      className="rounded-2xl px-3 py-2.5 text-xs transition-all"
+                      style={{
+                        backgroundColor: active ? "var(--green)" : "var(--bg)",
+                        color:           active ? "var(--color-btn-text)" : "var(--text-secondary)",
+                        border:          active ? "1px solid transparent" : "1px solid var(--border)",
+                      }}
+                      aria-pressed={active}
+                    >
+                      {relDayLabel(off)}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* 時刻スライダー */}
+              <div className="mb-5">
+                <div className="flex items-baseline justify-between mb-2">
+                  <span className="text-xs" style={{ color: "var(--text-muted)" }}>時刻</span>
+                  <span className="text-sm tabular-nums" style={{ color: "var(--text-primary)" }}>
+                    {slotToHHMM(pendingTimeSlot)}
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min={0}
+                  max={maxSlotForOffset(pendingDayOffset)}
+                  step={1}
+                  value={pendingTimeSlot}
+                  onChange={(e) => setPendingTimeSlot(Number(e.target.value))}
+                  className="w-full"
+                  style={{ accentColor: "var(--green)" }}
+                  aria-label="時刻（15分刻み）"
+                />
+                <div className="flex justify-between mt-1">
+                  <span className="text-xs" style={{ color: "var(--text-faint)" }}>00:00</span>
+                  <span className="text-xs" style={{ color: "var(--text-faint)" }}>
+                    {pendingDayOffset === 0 ? slotToHHMM(currentTimeSlot()) : "23:45"}
+                  </span>
+                </div>
+              </div>
+
+              {/* ボタン行 */}
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={resetComposer}
+                  className="flex-1 py-3 rounded-2xl text-xs tracking-widest transition-colors"
+                  style={{
+                    backgroundColor: "var(--bg)",
+                    border: "1px solid var(--border)",
+                    color: "var(--text-muted)",
+                  }}
+                >
+                  今に戻す
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmComposer}
+                  className="flex-1 py-3 rounded-2xl text-xs tracking-widest"
+                  style={{
+                    backgroundColor: "var(--green)",
+                    color: "var(--color-btn-text)",
+                  }}
+                >
+                  決定
+                </button>
+              </div>
             </div>
           </div>
         </div>

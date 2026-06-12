@@ -14,6 +14,7 @@ export type Entry = {
   insightLevel?: "deep" | "moderate" | "gentle";
   note?: string;
   isFavorited?: boolean;
+  recordedAt?: string;
 };
 
 // 感情の価値（valence）×彩度で色を設計するパレット

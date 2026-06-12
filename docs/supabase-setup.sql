@@ -218,3 +218,32 @@ grant select
   to authenticated;
 
 -- rate_limits は createAdminClient（service_role）経由のみ使用するため GRANT 不要
+
+-- 16. 遡及記録機能（v1.60.0）
+-- 過去 3 日以内であれば、ユーザーが時刻を指定して記録できる。
+-- created_at は引き続き「ユーザーが指定した記録対象の日時」を表し、
+-- recorded_at に「実際に書いた瞬間」を保持する。
+--
+-- マイグレーション手順（既存データを壊さない4段階）：
+--
+-- Step 1: nullable で列追加
+alter table public.entries add column if not exists recorded_at timestamptz;
+
+-- Step 2: 既存 NULL を created_at で backfill（必ず Step 3 の前に実行）
+update public.entries set recorded_at = created_at where recorded_at is null;
+-- 確認: select count(*) from public.entries where recorded_at is null;  -- → 0 になること
+
+-- Step 3: NOT NULL & DEFAULT now() を設定
+alter table public.entries alter column recorded_at set not null;
+alter table public.entries alter column recorded_at set default now();
+
+-- Step 4: CHECK 制約追加（3 日以内かつ未来不可）
+-- backfill 後の既存行は recorded_at = created_at なので全行 PASS する
+do $$ begin
+  if not exists (
+    select 1 from pg_constraint where conname = 'created_within_recorded_window'
+  ) then
+    alter table public.entries add constraint created_within_recorded_window
+      check (created_at <= recorded_at and created_at >= recorded_at - interval '3 days');
+  end if;
+end $$;
