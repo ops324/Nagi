@@ -114,10 +114,12 @@ export default function HomeClient({ initialEntries, userEmail, isAdmin }: HomeC
   // ── 遡及記録（v1.60.0）──
   // 過去 3 日以内の任意の時刻を「記録対象の日時」として書ける。
   // committedBackdate が null のときは "今" として扱う。
+  // 時と分を分離：時はスライダー（0-23）、分はチップ（0/15/30/45）。
   const [composerOpen, setComposerOpen] = useState(false);
   const [pendingDayOffset, setPendingDayOffset] = useState(0);
-  const [pendingTimeSlot, setPendingTimeSlot] = useState(0); // 0..95（15分刻み）
-  const [committedBackdate, setCommittedBackdate] = useState<{ dayOffset: number; timeSlot: number } | null>(null);
+  const [pendingHour, setPendingHour] = useState(0);
+  const [pendingMinute, setPendingMinute] = useState(0); // 0 / 15 / 30 / 45
+  const [committedBackdate, setCommittedBackdate] = useState<{ dayOffset: number; hour: number; minute: number } | null>(null);
 
   // 記録・ユーザー情報はサーバー（app/page.tsx）から props で受け取る。
   // ここではブラウザ専用の下書き・今週の凪キャッシュのみ復元する。
@@ -169,15 +171,21 @@ export default function HomeClient({ initialEntries, userEmail, isAdmin }: HomeC
 
   // ── 遡及記録ヘルパー ──
   const DAY_LABELS = ["今日", "昨日", "一昨日", "3日前"] as const;
-  const slotToHHMM = (slot: number) => {
-    const h = Math.floor(slot / 4);
-    const m = (slot % 4) * 15;
-    return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+  const MINUTE_CHOICES = [0, 15, 30, 45] as const;
+  const formatHHMM = (h: number, m: number) =>
+    `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+  // Nagi 哲学：記録は「観測した時間幅」であって「点」ではない。"ごろ" で不確定性を肯定。
+  const formatTimeWithGoro = (h: number, m: number) => `${formatHHMM(h, m)} ごろ`;
+  // スライダー位置がどの時間帯かをそっと補助表示
+  const periodOfHour = (h: number) => {
+    if (h < 5) return "未明";
+    if (h < 12) return "午前";
+    if (h < 17) return "午後";
+    if (h < 19) return "夕方";
+    return "夜";
   };
-  const currentTimeSlot = () => {
-    const d = new Date();
-    return d.getHours() * 4 + Math.floor(d.getMinutes() / 15);
-  };
+  const currentHour = () => new Date().getHours();
+  const currentMinuteRoundedDown = () => Math.floor(new Date().getMinutes() / 15) * 15;
   const dateForOffset = (off: number) => {
     const d = new Date();
     d.setDate(d.getDate() - off);
@@ -187,33 +195,62 @@ export default function HomeClient({ initialEntries, userEmail, isAdmin }: HomeC
     const d = dateForOffset(off);
     return `${DAY_LABELS[off]} ${d.getMonth() + 1}/${d.getDate()}`;
   };
-  const buildBackdateDate = (dayOffset: number, timeSlot: number) => {
+  // ステータスチップ用：日付は付けず短く（既に「昨日 14:30 ごろ」で十分文脈）
+  const relDayLabelShort = (off: number) => DAY_LABELS[off];
+  const buildBackdateDate = (dayOffset: number, hour: number, minute: number) => {
     const d = new Date();
     d.setDate(d.getDate() - dayOffset);
-    d.setHours(Math.floor(timeSlot / 4), (timeSlot % 4) * 15, 0, 0);
+    d.setHours(hour, minute, 0, 0);
     return d;
   };
   // 「今日」を選んでいる間は未来の時刻を選べない（CHECK 制約と整合）
-  const maxSlotForOffset = (off: number) => (off === 0 ? currentTimeSlot() : 95);
+  const maxHourForOffset = (off: number) => (off === 0 ? currentHour() : 23);
+  const isMinuteValidForToday = (off: number, h: number, m: number) => {
+    if (off !== 0) return true;
+    if (h < currentHour()) return true;
+    if (h > currentHour()) return false;
+    return m <= currentMinuteRoundedDown();
+  };
+  // (h, m) が選択中の dayOffset で未来になっていれば現在時刻まで丸める
+  const clampForOffset = (off: number, h: number, m: number): [number, number] => {
+    if (off !== 0) return [h, m];
+    const nowH = currentHour();
+    const nowM = currentMinuteRoundedDown();
+    if (h > nowH) return [nowH, nowM];
+    if (h === nowH && m > nowM) return [h, nowM];
+    return [h, m];
+  };
 
   const openComposer = () => {
     if (committedBackdate) {
       setPendingDayOffset(committedBackdate.dayOffset);
-      setPendingTimeSlot(committedBackdate.timeSlot);
+      setPendingHour(committedBackdate.hour);
+      setPendingMinute(committedBackdate.minute);
     } else {
       setPendingDayOffset(0);
-      setPendingTimeSlot(currentTimeSlot());
+      setPendingHour(currentHour());
+      setPendingMinute(currentMinuteRoundedDown());
     }
     setComposerOpen(true);
   };
   const handlePendingDayChange = (off: number) => {
     setPendingDayOffset(off);
-    // 「今日」に戻したときは現在時刻を超えていたら現在時刻に丸める
-    const max = maxSlotForOffset(off);
-    setPendingTimeSlot(prev => Math.min(prev, max));
+    // 「今日」に戻したときは未来時刻を現在時刻に丸める
+    const [h, m] = clampForOffset(off, pendingHour, pendingMinute);
+    setPendingHour(h);
+    setPendingMinute(m);
+  };
+  const handlePendingHourChange = (h: number) => {
+    const [clampedH, clampedM] = clampForOffset(pendingDayOffset, h, pendingMinute);
+    setPendingHour(clampedH);
+    setPendingMinute(clampedM);
   };
   const confirmComposer = () => {
-    setCommittedBackdate({ dayOffset: pendingDayOffset, timeSlot: pendingTimeSlot });
+    setCommittedBackdate({
+      dayOffset: pendingDayOffset,
+      hour: pendingHour,
+      minute: pendingMinute,
+    });
     setComposerOpen(false);
   };
   const resetComposer = () => {
@@ -248,7 +285,7 @@ export default function HomeClient({ initialEntries, userEmail, isAdmin }: HomeC
       // 遡及記録：committedBackdate があれば過去日時、なければ「今」
       const now = new Date();
       const createdAtDate = committedBackdate
-        ? buildBackdateDate(committedBackdate.dayOffset, committedBackdate.timeSlot)
+        ? buildBackdateDate(committedBackdate.dayOffset, committedBackdate.hour, committedBackdate.minute)
         : now;
       // 3 日境界の二重防御（UI 側でも制限済み・DB CHECK でも防御）
       const gapMs = now.getTime() - createdAtDate.getTime();
@@ -703,7 +740,7 @@ export default function HomeClient({ initialEntries, userEmail, isAdmin }: HomeC
                       aria-label="記録対象の時刻を変更"
                     >
                       <span aria-hidden>🕒</span>
-                      <span>{relDayLabel(committedBackdate.dayOffset)} {slotToHHMM(committedBackdate.timeSlot)}</span>
+                      <span>{relDayLabelShort(committedBackdate.dayOffset)} {formatTimeWithGoro(committedBackdate.hour, committedBackdate.minute)}</span>
                     </button>
                     <button
                       type="button"
@@ -1360,30 +1397,73 @@ export default function HomeClient({ initialEntries, userEmail, isAdmin }: HomeC
                 })}
               </div>
 
-              {/* 時刻スライダー */}
+              {/* 時刻：時スライダー + 分チップ + 「ごろ」 */}
               <div className="mb-5">
-                <div className="flex items-baseline justify-between mb-2">
+                <div className="flex items-baseline justify-between mb-3">
                   <span className="text-xs" style={{ color: "var(--text-muted)" }}>時刻</span>
                   <span className="text-sm tabular-nums" style={{ color: "var(--text-primary)" }}>
-                    {slotToHHMM(pendingTimeSlot)}
+                    {formatTimeWithGoro(pendingHour, pendingMinute)}
                   </span>
                 </div>
-                <input
-                  type="range"
-                  min={0}
-                  max={maxSlotForOffset(pendingDayOffset)}
-                  step={1}
-                  value={pendingTimeSlot}
-                  onChange={(e) => setPendingTimeSlot(Number(e.target.value))}
-                  className="w-full"
-                  style={{ accentColor: "var(--green)" }}
-                  aria-label="時刻（15分刻み）"
-                />
-                <div className="flex justify-between mt-1">
-                  <span className="text-xs" style={{ color: "var(--text-faint)" }}>00:00</span>
-                  <span className="text-xs" style={{ color: "var(--text-faint)" }}>
-                    {pendingDayOffset === 0 ? slotToHHMM(currentTimeSlot()) : "23:45"}
-                  </span>
+
+                {/* 時スライダー（0-23） */}
+                <div className="mb-1">
+                  <div className="flex items-baseline justify-between mb-1">
+                    <span className="text-xs" style={{ color: "var(--text-faint)" }}>時間</span>
+                    <span className="text-xs tabular-nums" style={{ color: "var(--text-muted)" }}>
+                      {pendingHour} 時 <span className="ml-1" style={{ color: "var(--text-faint)" }}>（{periodOfHour(pendingHour)}）</span>
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min={0}
+                    max={maxHourForOffset(pendingDayOffset)}
+                    step={1}
+                    value={pendingHour}
+                    onChange={(e) => handlePendingHourChange(Number(e.target.value))}
+                    className="w-full"
+                    style={{ accentColor: "var(--green)" }}
+                    aria-label="時間（0時から23時）"
+                  />
+                  <div className="flex justify-between mt-0.5">
+                    <span className="text-xs" style={{ color: "var(--text-faint)" }}>0</span>
+                    <span className="text-xs" style={{ color: "var(--text-faint)" }}>
+                      {maxHourForOffset(pendingDayOffset)}
+                    </span>
+                  </div>
+                </div>
+
+                {/* 分チップ（00 / 15 / 30 / 45） */}
+                <div className="mt-3">
+                  <div className="flex items-baseline justify-between mb-1.5">
+                    <span className="text-xs" style={{ color: "var(--text-faint)" }}>分</span>
+                  </div>
+                  <div className="grid grid-cols-4 gap-2">
+                    {MINUTE_CHOICES.map((m) => {
+                      const active = pendingMinute === m;
+                      const valid = isMinuteValidForToday(pendingDayOffset, pendingHour, m);
+                      return (
+                        <button
+                          key={m}
+                          type="button"
+                          onClick={() => valid && setPendingMinute(m)}
+                          disabled={!valid}
+                          className="rounded-2xl py-2 text-xs tabular-nums transition-all"
+                          style={{
+                            backgroundColor: active && valid ? "var(--green)" : "var(--bg)",
+                            color:           active && valid ? "var(--color-btn-text)" : valid ? "var(--text-secondary)" : "var(--text-faint)",
+                            border:          active && valid ? "1px solid transparent" : "1px solid var(--border)",
+                            opacity:         valid ? 1 : 0.45,
+                            cursor:          valid ? "pointer" : "not-allowed",
+                          }}
+                          aria-pressed={active}
+                          aria-label={`${m}分`}
+                        >
+                          {String(m).padStart(2, "0")}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
 
