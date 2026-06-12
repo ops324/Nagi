@@ -685,7 +685,53 @@ export default function HomeClient({ initialEntries, userEmail, isAdmin }: HomeC
             {/* 入力エリア */}
             <div className="input-card rounded-3xl p-[27px] shadow-sm"
               style={{ backgroundColor: "var(--bg-card)", border: "1px solid var(--border)" }}>
-              <p className="text-xs tracking-widest mb-4" style={{ color: "var(--text-muted)" }}>今日の記録</p>
+              {/* ヘッダー行：見出し（左）と記録対象時刻インジケータ（右・v1.60.0） */}
+              <div className="flex items-center justify-between mb-4">
+                <p className="text-xs tracking-widest" style={{ color: "var(--text-muted)" }}>今日の記録</p>
+                {committedBackdate ? (
+                  <div
+                    className="inline-flex items-center gap-2 pl-2.5 pr-1.5 py-1 rounded-full text-xs"
+                    style={{
+                      backgroundColor: "var(--green-light)",
+                      color: "var(--color-btn-text)",
+                    }}
+                  >
+                    <button
+                      type="button"
+                      onClick={openComposer}
+                      className="inline-flex items-center gap-1.5 hover:opacity-80 transition-opacity"
+                      aria-label="記録対象の時刻を変更"
+                    >
+                      <span aria-hidden>🕒</span>
+                      <span>{relDayLabel(committedBackdate.dayOffset)} {slotToHHMM(committedBackdate.timeSlot)}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCommittedBackdate(null)}
+                      className="flex items-center justify-center w-5 h-5 rounded-full hover:bg-black/10 transition-colors"
+                      aria-label="今に戻す"
+                    >
+                      <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                        <path d="M1.5 1.5l7 7M8.5 1.5l-7 7" />
+                      </svg>
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={openComposer}
+                    className="inline-flex items-center gap-1 text-xs hover:opacity-80 transition-opacity"
+                    style={{ color: "var(--text-faint)" }}
+                    aria-label="記録対象の時刻を変更（現在は「今」）"
+                  >
+                    <span aria-hidden>🕒</span>
+                    <span>今</span>
+                    <svg width="8" height="8" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                      <path d="M2 4l3 3 3-3" />
+                    </svg>
+                  </button>
+                )}
+              </div>
 
               {loading ? (
                 /* ── ローディング演出 ── */
@@ -733,68 +779,23 @@ export default function HomeClient({ initialEntries, userEmail, isAdmin }: HomeC
 
               {error && <p className="text-xs mt-2" style={{ color: "#fca5a5" }}>{error}</p>}
               {!loading && (
-                <>
-                  {/* 遡及記録の入口（v1.60.0）：通常は薄いリンク、選択中はステータスチップ */}
-                  <div className="mt-3 flex items-center min-h-[1.75rem]">
-                    {committedBackdate ? (
-                      <div
-                        className="inline-flex items-center gap-2 pl-3 pr-2 py-1 rounded-full text-xs"
-                        style={{
-                          backgroundColor: "var(--green-light)",
-                          color: "var(--color-btn-text)",
-                        }}
-                      >
-                        <button
-                          type="button"
-                          onClick={openComposer}
-                          className="inline-flex items-center gap-1.5 hover:opacity-80 transition-opacity"
-                          aria-label="記録対象の時刻を変更"
-                        >
-                          <span aria-hidden>🕒</span>
-                          <span>{relDayLabel(committedBackdate.dayOffset)} {slotToHHMM(committedBackdate.timeSlot)}</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setCommittedBackdate(null)}
-                          className="flex items-center justify-center w-5 h-5 rounded-full hover:bg-black/10 transition-colors"
-                          aria-label="今に戻す"
-                        >
-                          <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-                            <path d="M1.5 1.5l7 7M8.5 1.5l-7 7" />
-                          </svg>
-                        </button>
-                      </div>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={openComposer}
-                        className="inline-flex items-center gap-1.5 text-xs hover:opacity-80 transition-opacity"
-                        style={{ color: "var(--text-muted)" }}
-                      >
-                        <span aria-hidden>🕒</span>
-                        <span>少し前のこととして書く</span>
-                      </button>
-                    )}
-                  </div>
-
-                  <div className="flex items-center justify-between mt-3">
-                    <span className="text-xs" style={{ color: "var(--text-muted)" }}>
-                      {content.length > 4800 ? `${content.length} / 5000` : ""}
-                    </span>
-                    <button
-                      onClick={handleSubmit}
-                      disabled={!content.trim()}
-                      className="px-7 py-2.5 rounded-full text-xs tracking-widest transition-all"
-                      style={{
-                        backgroundColor: !content.trim() ? "var(--bg-disabled)" : "var(--green)",
-                        color:           !content.trim() ? "var(--text-disabled)" : "var(--color-btn-text)",
-                        cursor:          !content.trim() ? "not-allowed" : "pointer",
-                      }}
-                    >
-                      記録する
-                    </button>
-                  </div>
-                </>
+                <div className="flex items-center justify-between mt-4">
+                  <span className="text-xs" style={{ color: "var(--text-muted)" }}>
+                    {content.length > 4800 ? `${content.length} / 5000` : ""}
+                  </span>
+                  <button
+                    onClick={handleSubmit}
+                    disabled={!content.trim()}
+                    className="px-7 py-2.5 rounded-full text-xs tracking-widest transition-all"
+                    style={{
+                      backgroundColor: !content.trim() ? "var(--bg-disabled)" : "var(--green)",
+                      color:           !content.trim() ? "var(--text-disabled)" : "var(--color-btn-text)",
+                      cursor:          !content.trim() ? "not-allowed" : "pointer",
+                    }}
+                  >
+                    記録する
+                  </button>
+                </div>
               )}
             </div>
 
