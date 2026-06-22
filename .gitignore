@@ -12,6 +12,10 @@
 
 # testing
 /coverage
+/test-results
+
+# claude code worktrees（ローカル専用・巨大なため絶対にコミットしない）
+.claude/worktrees/
 
 # next.js
 /.next/
