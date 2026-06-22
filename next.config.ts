@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs";
 
 const securityHeaders = [
   {
@@ -33,7 +34,7 @@ const securityHeaders = [
       "style-src 'self' 'unsafe-inline'", // Tailwind inline styles
       "img-src 'self' data: https:",
       "font-src 'self'",
-      "connect-src 'self' https://ahrppujhrfvwimfmropx.supabase.co https://api.anthropic.com",
+      "connect-src 'self' https://ahrppujhrfvwimfmropx.supabase.co https://api.anthropic.com https://*.sentry.io",
       "frame-ancestors 'none'",
       "base-uri 'self'",
       "form-action 'self'",
@@ -52,4 +53,14 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+// Sentry でラップ（ソースマップアップロードは SENTRY_AUTH_TOKEN がある時のみ実行され、
+// 無い場合はスキップされる。org/project は環境変数で指定）。
+export default withSentryConfig(nextConfig, {
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  silent: !process.env.CI,
+  // Sentry の内部 logger をツリーシェイクしてバンドルを軽量化
+  disableLogger: true,
+  // Vercel Cron Monitors の自動生成はしない
+  automaticVercelMonitors: false,
+});
