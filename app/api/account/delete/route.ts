@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { rateLimit } from "@/lib/rate-limit";
 import { validateOrigin, validateCsrf } from "@/lib/origin-check";
+import { logError } from "@/lib/log";
 
 export async function DELETE(request: NextRequest) {
   try {
@@ -41,17 +42,13 @@ export async function DELETE(request: NextRequest) {
     // entries → profiles の順で削除（外部キー制約のため逆順にしない）
     const { error: entriesError } = await adminClient.from("entries").delete().eq("user_id", userId);
     if (entriesError) {
-      if (process.env.NODE_ENV === "development") {
-        console.error("Account delete error (entries):", entriesError);
-      }
+      logError(entriesError, { scope: "api/account/delete:entries" });
       return NextResponse.json({ error: "Failed to delete account" }, { status: 500 });
     }
 
     const { error: profilesError } = await adminClient.from("profiles").delete().eq("id", userId);
     if (profilesError) {
-      if (process.env.NODE_ENV === "development") {
-        console.error("Account delete error (profiles):", profilesError);
-      }
+      logError(profilesError, { scope: "api/account/delete:profiles" });
       return NextResponse.json({ error: "Failed to delete account" }, { status: 500 });
     }
 
@@ -59,19 +56,13 @@ export async function DELETE(request: NextRequest) {
     const { error: deleteError } = await adminClient.auth.admin.deleteUser(userId);
 
     if (deleteError) {
-      if (process.env.NODE_ENV === "development") {
-        console.error("Account delete error:", deleteError);
-      }
+      logError(deleteError, { scope: "api/account/delete:auth" });
       return NextResponse.json({ error: "Failed to delete account" }, { status: 500 });
     }
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    if (process.env.NODE_ENV === "development") {
-      console.error("Account delete error:", error);
-    } else {
-      console.error("Account delete error occurred");
-    }
+    logError(error, { scope: "api/account/delete" });
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

@@ -4,6 +4,7 @@ import { rateLimit } from "@/lib/rate-limit";
 import { validateOrigin } from "@/lib/origin-check";
 import { isRetryableError } from "@/lib/anthropic-retry";
 import { generateComment } from "@/lib/generate-comment";
+import { logError } from "@/lib/log";
 
 export async function POST(request: NextRequest) {
   try {
@@ -66,12 +67,8 @@ export async function POST(request: NextRequest) {
       }
     );
   } catch (error) {
-    // 本番環境では詳細をログに出さない
-    if (process.env.NODE_ENV === "development") {
-      console.error("API error:", error);
-    } else {
-      console.error("API error: comment generation failed");
-    }
+    // 詳細はクライアントに返さず、本番では Sentry にのみ送る
+    logError(error, { scope: "api/comment" });
     // Anthropic の一時的な過負荷（529 等）はリトライ後も失敗しうるため、
     // 恒久的な失敗(500)と区別して 503 + 再試行を促すメッセージを返す
     if (isRetryableError(error)) {

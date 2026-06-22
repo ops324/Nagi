@@ -6,6 +6,7 @@ import { validateOrigin } from "@/lib/origin-check";
 import { WEEKLY_SUMMARY_PROMPT } from "@/prompts/weekly-summary-prompt";
 import { createMessageWithRetry, isRetryableError } from "@/lib/anthropic-retry";
 import { Entry } from "@/app/types";
+import { logError } from "@/lib/log";
 
 const client = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -77,7 +78,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ summary });
   } catch (error) {
-    if (process.env.NODE_ENV === "development") console.error("weekly-summary error:", error);
+    logError(error, { scope: "api/weekly-summary" });
     if (isRetryableError(error)) {
       return NextResponse.json(
         { error: "ただいま混み合っています。少し時間をおいてもう一度お試しください" },

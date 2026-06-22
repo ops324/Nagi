@@ -3,6 +3,7 @@ import { rateLimit } from "@/lib/rate-limit";
 import { validateOrigin } from "@/lib/origin-check";
 import { isRetryableError } from "@/lib/anthropic-retry";
 import { generateComment } from "@/lib/generate-comment";
+import { logError } from "@/lib/log";
 
 // 登録前のお試し体験（/try）用のコメント生成API。
 // 本番（/api/comment）との違い:
@@ -65,11 +66,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ comment, emotions, dominant, energy, insightLevel });
   } catch (error) {
-    if (process.env.NODE_ENV === "development") {
-      console.error("Demo API error:", error);
-    } else {
-      console.error("Demo API error: comment generation failed");
-    }
+    logError(error, { scope: "api/comment/demo" });
     if (isRetryableError(error)) {
       return NextResponse.json(
         { error: "ただいま混み合っています。少し時間をおいてもう一度お試しください" },
