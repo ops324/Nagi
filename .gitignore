@@ -14,6 +14,11 @@
 /coverage
 /test-results
 
+# playwright
+/playwright-report
+/blob-report
+/playwright/.cache
+
 # claude code worktrees（ローカル専用・巨大なため絶対にコミットしない）
 .claude/worktrees/
 
