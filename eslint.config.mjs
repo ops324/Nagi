@@ -12,6 +12,13 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // ローカル専用ディレクトリ（git 未追跡）。lint 対象外にする。
+    // .claude/worktrees にはプロジェクトの複製が多数あり、これを lint すると
+    // 数万件の問題が報告されてしまうため必須。
+    ".claude/**",
+    "supabase/**",
+    "test-results/**",
+    "coverage/**",
   ]),
 ]);
 
