@@ -59,8 +59,4 @@ export default withSentryConfig(nextConfig, {
   org: process.env.SENTRY_ORG,
   project: process.env.SENTRY_PROJECT,
   silent: !process.env.CI,
-  // Sentry の内部 logger をツリーシェイクしてバンドルを軽量化
-  disableLogger: true,
-  // Vercel Cron Monitors の自動生成はしない
-  automaticVercelMonitors: false,
 });
