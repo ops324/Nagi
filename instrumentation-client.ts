@@ -10,3 +10,6 @@ Sentry.init({
   sendDefaultPii: false,
   tracesSampleRate: process.env.NODE_ENV === "development" ? 1.0 : 0.1,
 });
+
+// App Router のナビゲーション計測（Sentry が要求するエクスポート）
+export const onRouterTransitionStart = Sentry.captureRouterTransitionStart;
