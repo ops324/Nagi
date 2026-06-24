@@ -19,6 +19,8 @@ export interface EntryCardProps {
   isNew?: boolean;
   /** スクロールナビゲーション用 DOM id */
   domId?: string;
+  /** 一覧内の表示順。stagger（時間差フェードイン）の遅延に使う */
+  index?: number;
 }
 
 const fmtDate = (iso: string) =>
@@ -59,6 +61,7 @@ export default function EntryCard({
   highlighted = false,
   isNew = false,
   domId,
+  index = 0,
 }: EntryCardProps) {
   const [expanded, setExpanded] = useState(false);
   const [hovered, setHovered] = useState(false);
@@ -74,6 +77,7 @@ export default function EntryCard({
 
       <article
         id={domId}
+        className="entry-card-anim"
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
         style={{
@@ -99,12 +103,13 @@ export default function EntryCard({
           boxShadow: highlighted
             ? "0 0 0 3px color-mix(in srgb, var(--tab-active) 20%, transparent)"
             : hovered
-            ? `0 16px 48px color-mix(in srgb, ${dominantColor} 10%, transparent),
-               0 4px 16px color-mix(in srgb, var(--text-primary) 5%, transparent)`
-            : "0 1px 4px color-mix(in srgb, var(--text-primary) 4%, transparent)",
+            ? `var(--shadow-3), 0 8px 28px color-mix(in srgb, ${dominantColor} 8%, transparent)`
+            : "var(--shadow-1)",
           animation: isNew
             ? "entryFadeUp 0.45s cubic-bezier(0.4, 0, 0.2, 1) both, newEntryGlow 4s ease-out both"
             : "entryFadeUp 0.45s cubic-bezier(0.4, 0, 0.2, 1) both",
+          // stagger：新着は即時（delay 0）、それ以外は表示順にわずかに遅らせる（上限あり）
+          animationDelay: isNew ? "0ms" : `${Math.min(index, 6) * 45}ms`,
         }}
       >
         {/* Deep insight: 支配感情の色で静かに呼吸するアンビエントグロー */}
