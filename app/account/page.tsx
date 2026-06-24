@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
@@ -10,7 +10,9 @@ import { ABOUT_INTRO } from "../lib/about";
 
 export default function AccountPage() {
   const router = useRouter();
-  const supabase = createClient();
+  // @supabase/ssr は内部でシングルトン。useMemo で参照を安定させ、
+  // 認証チェック effect の依存に含められるようにする（exhaustive-deps 対策）。
+  const supabase = useMemo(() => createClient(), []);
 
   const [userEmail, setUserEmail] = useState<string>("");
   const [loading, setLoading] = useState(true);
@@ -45,7 +47,7 @@ export default function AccountPage() {
       setLoading(false);
     };
     loadUser();
-  }, []);
+  }, [router, supabase]);
 
   // ── メールアドレス変更 ──────────────────────────────
   const handleEmailChange = async (e: React.FormEvent) => {
