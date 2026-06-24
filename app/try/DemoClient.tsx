@@ -65,9 +65,11 @@ export default function DemoClient() {
   const [result, setResult] = useState<Entry | null>(null);
   const questionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // ローディング中のフェーズサイクル（HomeClient と同じ間隔）
+  // ローディング中のフェーズサイクル（HomeClient と同じ間隔）。
+  // リセット（フェーズ0）は送信開始時（handleSubmit）に行い、effect 内では
+  // 同期 setState を行わない（react-hooks/set-state-in-effect 対策）。
   useEffect(() => {
-    if (!loading) { setLoadingPhase(0); return; }
+    if (!loading) return;
     const t1 = setTimeout(() => setLoadingPhase(1), 1800);
     const t2 = setTimeout(() => setLoadingPhase(2), 3800);
     return () => { clearTimeout(t1); clearTimeout(t2); };
@@ -75,6 +77,7 @@ export default function DemoClient() {
 
   const handleSubmit = async () => {
     if (!content.trim() || loading) return;
+    setLoadingPhase(0);
     setLoading(true);
     setError("");
     setLoadingQuestion(null);
