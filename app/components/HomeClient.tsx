@@ -6,6 +6,7 @@ import Image from "next/image";
 import { Entry, Emotion, EMOTION_COLORS } from "../types";
 import { createClient } from "@/lib/supabase/client";
 import EntryCard from "./EntryCard";
+import InputCard from "./InputCard";
 import AccountMenu from "./AccountMenu";
 import EmotionFilter from "./EmotionFilter";
 import Welcome from "./Welcome";
@@ -35,8 +36,6 @@ const LOADING_QUESTIONS: Record<"negative" | "positive" | "neutral", string[]> =
     "この記録の奥に、何が静かに在りますか",
   ],
 };
-
-const PHASE_LABELS = ["読んでいます", "感じています", "ことばを選んでいます"] as const;
 
 // 新規記録の id（タイムスタンプ文字列）。Date.now() を render 解析対象の
 // コンポーネント外へ退避して purity ルールを満たす（生成値は従来と同一）。
@@ -602,76 +601,16 @@ export default function HomeClient({ initialEntries, userEmail, isAdmin }: HomeC
         {tab === "journal" && (
           <div role="tabpanel" id="panel-journal" aria-labelledby="tab-journal" className="space-y-5">
             {/* 入力エリア */}
-            <div className="input-card rounded-3xl p-[27px]"
-              style={{ backgroundColor: "var(--bg-card)", border: "1px solid var(--border)", boxShadow: "var(--shadow-1)" }}>
-              <p className="text-xs tracking-widest mb-4" style={{ color: "var(--text-muted)" }}>今日の記録</p>
-
-              {loading ? (
-                /* ── ローディング演出 ── */
-                <div className="h-40 flex flex-col items-center justify-center gap-5">
-                  {/* 波紋 */}
-                  <div className="relative w-12 h-12 flex items-center justify-center flex-shrink-0">
-                    <div className="loading-ring" style={{ animationDelay: "0s" }} />
-                    <div className="loading-ring" style={{ animationDelay: "0.87s" }} />
-                    <div className="loading-ring" style={{ animationDelay: "1.73s" }} />
-                    <div className="w-2 h-2 rounded-full flex-shrink-0"
-                      style={{ backgroundColor: "var(--green)", opacity: 0.7 }} />
-                  </div>
-
-                  {/* フェーズテキスト */}
-                  <p key={loadingPhase}
-                    className="text-xs tracking-widest nagi-phase"
-                    style={{ color: "var(--text-muted)" }}>
-                    {PHASE_LABELS[loadingPhase]}
-                  </p>
-                </div>
-              ) : (
-                <textarea
-                  value={content}
-                  onChange={(e) => handleContentChange(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  maxLength={5000}
-                  placeholder={"今日、どんなことがありましたか。\nうまく言葉にならなくても、大丈夫です。"}
-                  className="w-full h-40 text-sm resize-none outline-none leading-relaxed"
-                  style={{
-                    color: "var(--text-primary)",
-                    backgroundColor: "transparent",
-                  }}
-                  aria-label="今日の記録"
-                />
-              )}
-
-              {/* 問いかけ（ローディング中のみ） */}
-              {loadingQuestion && (
-                <p key={loadingQuestion}
-                  className="text-sm text-center leading-relaxed nagi-question"
-                  style={{ color: "var(--text-secondary)", fontStyle: "italic" }}>
-                  {loadingQuestion}
-                </p>
-              )}
-
-              {error && <p className="text-xs mt-2" style={{ color: "#fca5a5" }}>{error}</p>}
-              {!loading && (
-                <div className="flex items-center justify-between mt-4">
-                  <span className="text-xs" style={{ color: "var(--text-muted)" }}>
-                    {content.length > 4800 ? `${content.length} / 5000` : ""}
-                  </span>
-                  <button
-                    onClick={handleSubmit}
-                    onPointerDown={spawnRipple}
-                    disabled={!content.trim()}
-                    className="btn-primary px-7 py-2.5 rounded-full text-xs tracking-widest"
-                    style={{
-                      backgroundColor: !content.trim() ? "var(--bg-disabled)" : "var(--green)",
-                      color:           !content.trim() ? "var(--text-disabled)" : "var(--color-btn-text)",
-                      cursor:          !content.trim() ? "not-allowed" : "pointer",
-                    }}
-                  >
-                    記録する
-                  </button>
-                </div>
-              )}
-            </div>
+            <InputCard
+              content={content}
+              loading={loading}
+              loadingPhase={loadingPhase}
+              loadingQuestion={loadingQuestion}
+              error={error}
+              onContentChange={handleContentChange}
+              onKeyDown={handleKeyDown}
+              onSubmit={handleSubmit}
+            />
 
             {/* あの日の凪（A-1） */}
             {(() => {
