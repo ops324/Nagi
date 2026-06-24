@@ -35,7 +35,46 @@
   /* ── Motion ── */
   --duration-fast:   150ms;
   --duration-normal: 250ms;
+  --duration-slow:   400ms;   /* シート・ダイアログ等の大きな遷移 */
   --easing-calm:     cubic-bezier(0.4, 0, 0.2, 1);
+  /* M3 emphasized：入りは速く・出は粘る上質な減速。振り幅の大きい遷移にのみ使う */
+  --easing-emphasized:    cubic-bezier(0.2, 0, 0, 1);
+  --easing-emphasized-in: cubic-bezier(0.3, 0, 0.8, 0.15);
+  --easing-spring:        cubic-bezier(0.34, 1.56, 0.64, 1); /* EntryCard 由来の跳ね */
+
+  /* ── Elevation 影スケール（v2 デザイン刷新） ───────────────────
+     黒のベタ影は静けさを殺すため、暖色グレー(#292524)を低不透明度で
+     2層構成（近接影＋拡散影）。カードは最大 --shadow-3、Dialog のみ --shadow-5。
+     ──────────────────────────────────────────────────────────── */
+  --shadow-color: 41 37 36;   /* #292524 を rgb（rgb(var(--shadow-color)/α) で使用） */
+  --shadow-1: 0 1px 2px rgb(var(--shadow-color) / 0.04),
+              0 1px 3px rgb(var(--shadow-color) / 0.03);
+  --shadow-2: 0 2px 4px rgb(var(--shadow-color) / 0.04),
+              0 4px 8px rgb(var(--shadow-color) / 0.04);
+  --shadow-3: 0 4px 8px rgb(var(--shadow-color) / 0.05),
+              0 8px 20px rgb(var(--shadow-color) / 0.06);
+  --shadow-4: 0 8px 16px rgb(var(--shadow-color) / 0.06),
+              0 16px 36px rgb(var(--shadow-color) / 0.07);
+  --shadow-5: 0 12px 28px rgb(var(--shadow-color) / 0.08),
+              0 24px 56px rgb(var(--shadow-color) / 0.09);
+
+  /* ── State layer（hover/press の極薄 tint「膜」） ──────────────
+     ベタ塗りでなく不透明度のみで「面に触れた」感を出す（静けさを保つ）。
+     緑ボタン用は色を変えず白/締め色を混ぜて hover/press を表現。
+     ──────────────────────────────────────────────────────────── */
+  --state-hover: rgb(var(--shadow-color) / 0.04);
+  --state-press: rgb(var(--shadow-color) / 0.08);
+  --state-green-hover: color-mix(in srgb, var(--green) 88%, white);
+  --state-green-press: color-mix(in srgb, var(--green) 82%, #065f46);
+
+  /* ── タイポ階層（既存のインライン値の言語化。見た目は変えない） ── */
+  --text-label:  0.6875rem;  /* 11px ラベル・タブ */
+  --text-meta:   0.75rem;    /* 12px メタ情報 */
+  --text-body:   0.875rem;   /* 14px UI 本文 */
+  --text-title:  1.0625rem;  /* 17px 画面見出し */
+  --tracking-wide:  0.1em;
+  --tracking-wider: 0.18em;
+  --leading-prose:  2;
 }
 
 .dark {
@@ -57,6 +96,20 @@
   --green:          #6ee7b7;
   --green-light:    #d1fae5;
   --yellow:         #fde68a;
+
+  /* ダークでは影は black 寄り＆やや濃く（質感を保つ） */
+  --shadow-color: 0 0 0;
+  --shadow-1: 0 1px 2px rgb(0 0 0 / 0.20), 0 1px 3px rgb(0 0 0 / 0.16);
+  --shadow-2: 0 2px 4px rgb(0 0 0 / 0.22), 0 4px 8px rgb(0 0 0 / 0.18);
+  --shadow-3: 0 4px 8px rgb(0 0 0 / 0.26), 0 8px 20px rgb(0 0 0 / 0.22);
+  --shadow-4: 0 8px 16px rgb(0 0 0 / 0.30), 0 16px 36px rgb(0 0 0 / 0.26);
+  --shadow-5: 0 12px 28px rgb(0 0 0 / 0.34), 0 24px 56px rgb(0 0 0 / 0.30);
+
+  /* ダークの state layer は白 tint（黒だと沈んで見えない） */
+  --state-hover: rgb(255 255 255 / 0.05);
+  --state-press: rgb(255 255 255 / 0.09);
+  --state-green-hover: color-mix(in srgb, var(--green) 90%, white);
+  --state-green-press: color-mix(in srgb, var(--green) 85%, #022c22);
 }
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -429,4 +482,169 @@ textarea { caret-color: var(--green); }
     0%, 100% { opacity: 0.20; }
     50%      { opacity: 0.55; }
   }
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   v2 デザインラボ専用スタイル（/preview の [data-design] スコープ限定）
+   ─────────────────────────────────────────────────────────────
+   本体（app/**）には一切影響しない。承認後に各コンポーネントへ移植する。
+   data-design="v1" = 現状相当（フラット影） / "v2" = 刷新後
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+/* テーマ自己確立（ルートの ThemeManager の dark 継承を上書きするため、
+   ラボの面で全変数を再宣言する。/preview 限定） */
+[data-design].v2-light,
+[data-design].v2-morning,
+[data-design].v2-evening {
+  --bg: #f7f5f0; --bg-card: #ffffff; --bg-header: rgba(247,245,240,0.85);
+  --bg-comment: #f7f5f0; --bg-disabled: #e7e5e0;
+  --text-primary: #44403c; --text-secondary: #78716c; --text-muted: #74706a;
+  --text-entry: #57534e; --text-disabled: #b5afa8; --text-subtle: #a8a29e; --text-faint: #d6d3d1;
+  --border: #ede9e3; --border-inner: #f0ede8; --tab-active: #a8a29e;
+  --green: #6ee7b7; --green-light: #d1fae5; --yellow: #fde68a;
+  --shadow-color: 41 37 36;
+  --shadow-1: 0 1px 2px rgb(var(--shadow-color)/0.04), 0 1px 3px rgb(var(--shadow-color)/0.03);
+  --shadow-2: 0 2px 4px rgb(var(--shadow-color)/0.04), 0 4px 8px rgb(var(--shadow-color)/0.04);
+  --shadow-3: 0 4px 8px rgb(var(--shadow-color)/0.05), 0 8px 20px rgb(var(--shadow-color)/0.06);
+  --shadow-4: 0 8px 16px rgb(var(--shadow-color)/0.06), 0 16px 36px rgb(var(--shadow-color)/0.07);
+  --shadow-5: 0 12px 28px rgb(var(--shadow-color)/0.08), 0 24px 56px rgb(var(--shadow-color)/0.09);
+  --state-hover: rgb(var(--shadow-color)/0.04);
+  --state-press: rgb(var(--shadow-color)/0.08);
+  --state-green-hover: color-mix(in srgb, var(--green) 88%, white);
+  --state-green-press: color-mix(in srgb, var(--green) 82%, #065f46);
+}
+[data-design].v2-morning { --bg: #faf8f3; --bg-header: rgba(250,248,243,0.85); --tab-active: #9aa39e; }
+[data-design].v2-evening { --bg: #f6f1e7; --bg-header: rgba(246,241,231,0.85); --tab-active: #b09d88; }
+[data-design].v2-dark {
+  --bg: #1a1816; --bg-card: #242120; --bg-header: rgba(26,24,22,0.88);
+  --bg-comment: #1e1c1a; --bg-disabled: #2e2b28;
+  --text-primary: #e4dfd8; --text-secondary: #b8b0a8; --text-muted: #908a85;
+  --text-entry: #c4bdb5; --text-disabled: #6b6560; --text-subtle: #6b6560; --text-faint: #4a4540;
+  --border: #4a4540; --border-inner: #302d2a; --tab-active: #908a85;
+  --green: #6ee7b7; --green-light: #d1fae5; --yellow: #fde68a;
+  --shadow-color: 0 0 0;
+  --shadow-1: 0 1px 2px rgb(0 0 0/0.20), 0 1px 3px rgb(0 0 0/0.16);
+  --shadow-2: 0 2px 4px rgb(0 0 0/0.22), 0 4px 8px rgb(0 0 0/0.18);
+  --shadow-3: 0 4px 8px rgb(0 0 0/0.26), 0 8px 20px rgb(0 0 0/0.22);
+  --shadow-4: 0 8px 16px rgb(0 0 0/0.30), 0 16px 36px rgb(0 0 0/0.26);
+  --shadow-5: 0 12px 28px rgb(0 0 0/0.34), 0 24px 56px rgb(0 0 0/0.30);
+  --state-hover: rgb(255 255 255/0.05);
+  --state-press: rgb(255 255 255/0.09);
+  --state-green-hover: color-mix(in srgb, var(--green) 90%, white);
+  --state-green-press: color-mix(in srgb, var(--green) 85%, #022c22);
+}
+
+/* デモカード共通 */
+[data-design] .v2-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+[data-design="v1"] .v2-card { box-shadow: 0 1px 4px rgb(var(--shadow-color) / 0.06); }
+[data-design="v2"] .v2-card {
+  box-shadow: var(--shadow-1);
+  transition: box-shadow 0.35s var(--easing-emphasized),
+              transform 0.35s var(--easing-spring);
+}
+[data-design="v2"] .v2-card:hover {
+  box-shadow: var(--shadow-3);
+  transform: translateY(-2px);
+}
+
+/* elevation スケール見本 */
+[data-design] .v2-elev-1 { box-shadow: var(--shadow-1); }
+[data-design] .v2-elev-2 { box-shadow: var(--shadow-2); }
+[data-design] .v2-elev-3 { box-shadow: var(--shadow-3); }
+[data-design] .v2-elev-4 { box-shadow: var(--shadow-4); }
+[data-design] .v2-elev-5 { box-shadow: var(--shadow-5); }
+
+/* Primary ボタン（state layer + 影 + 押下スケール） */
+[data-design] .v2-btn {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-full);
+  background: var(--green);
+  color: var(--color-btn-text);
+  border: none;
+  cursor: pointer;
+}
+[data-design="v1"] .v2-btn { box-shadow: none; transition: opacity var(--duration-fast); }
+[data-design="v1"] .v2-btn:hover { opacity: 0.9; }
+[data-design="v2"] .v2-btn {
+  box-shadow: var(--shadow-1);
+  transition: box-shadow var(--duration-normal) var(--easing-calm),
+              background-color var(--duration-fast) var(--easing-calm),
+              transform var(--duration-fast) var(--easing-calm);
+}
+[data-design="v2"] .v2-btn:hover { background: var(--state-green-hover); box-shadow: var(--shadow-2); }
+[data-design="v2"] .v2-btn:active { background: var(--state-green-press); transform: scale(0.97); }
+
+/* ghost アイコンボタン（state layer の膜） */
+[data-design] .v2-icon-btn {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-full);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: background-color var(--duration-fast) var(--easing-calm);
+}
+[data-design="v2"] .v2-icon-btn:hover { background: var(--state-hover); }
+[data-design="v2"] .v2-icon-btn:active { background: var(--state-press); }
+
+/* リップル（既存 logout-ripple を汎用化。JS で span.v2-ripple を生成） */
+[data-design] .v2-ripple {
+  position: absolute;
+  width: 12px; height: 12px;
+  margin: -6px 0 0 -6px;
+  border-radius: 50%;
+  background: rgb(var(--shadow-color) / 0.18);
+  transform: scale(0);
+  pointer-events: none;
+  animation: v2-ripple-expand 0.6s var(--easing-calm) forwards;
+}
+@keyframes v2-ripple-expand {
+  from { transform: scale(0);  opacity: 0.5; }
+  to   { transform: scale(18); opacity: 0; }
+}
+
+/* タブのスライドインジケータ */
+[data-design] .v2-tab-indicator {
+  position: absolute;
+  bottom: 0;
+  height: 2px;
+  background: var(--tab-active);
+  border-radius: 2px;
+  transition: transform var(--duration-normal) var(--easing-emphasized),
+              width var(--duration-normal) var(--easing-emphasized);
+}
+
+/* Dialog 出現（emphasized の scale+fade） */
+@keyframes v2-dialog-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1); }
+}
+[data-design="v2"] .v2-dialog { animation: v2-dialog-in 0.32s var(--easing-emphasized) both; }
+
+/* リスト stagger（再マウントで再生） */
+@keyframes v2-fade-up {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+[data-design="v2"] .v2-stagger > * { animation: v2-fade-up 0.5s var(--easing-emphasized) both; }
+[data-design="v2"] .v2-stagger > *:nth-child(1) { animation-delay: 0ms; }
+[data-design="v2"] .v2-stagger > *:nth-child(2) { animation-delay: 60ms; }
+[data-design="v2"] .v2-stagger > *:nth-child(3) { animation-delay: 120ms; }
+[data-design="v2"] .v2-stagger > *:nth-child(4) { animation-delay: 180ms; }
+[data-design="v2"] .v2-stagger > *:nth-child(5) { animation-delay: 240ms; }
+[data-design="v2"] .v2-stagger > *:nth-child(n+6) { animation-delay: 240ms; }
+
+@media (prefers-reduced-motion: reduce) {
+  [data-design="v2"] .v2-card,
+  [data-design="v2"] .v2-btn { transition: background-color var(--duration-fast); }
+  [data-design="v2"] .v2-card:hover { transform: none; }
+  [data-design="v2"] .v2-btn:active { transform: none; }
+  [data-design] .v2-ripple { animation: none; opacity: 0; }
+  [data-design="v2"] .v2-dialog { animation: none; }
+  [data-design="v2"] .v2-stagger > * { animation: none; }
 }
