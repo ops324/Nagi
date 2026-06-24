@@ -20,18 +20,9 @@ const eslintConfig = defineConfig([
     "test-results/**",
     "coverage/**",
   ]),
-  // eslint-plugin-react-hooks v6（React Compiler 系ルール）が新たに error 化した
-  // 既存コードの指摘を、いったん warn に緩和する。
-  //   - react-hooks/set-state-in-effect: HomeClient.tsx 118/131・DemoClient.tsx 68
-  //   - react-hooks/purity（Date.now を render 中に呼ぶ）: HomeClient.tsx 187
-  // いずれも本PR（テスト基盤）とは無関係の既存パターン。実機テストを伴う修正が
-  // 必要なため、HomeClient 分割を行うフェーズ3で対応する（それまで CI を赤にしない）。
-  {
-    rules: {
-      "react-hooks/set-state-in-effect": "warn",
-      "react-hooks/purity": "warn",
-    },
-  },
+  // 注: react-hooks v6 系の set-state-in-effect / purity は v1.60.0 で一時的に warn へ
+  // 緩和していたが、フェーズ3（本対応）で実コードを修正済みのため既定の error に復帰した。
+  // localStorage 復元の1箇所のみ HomeClient.tsx 内の eslint-disable で個別許容している。
 ]);
 
 export default eslintConfig;
