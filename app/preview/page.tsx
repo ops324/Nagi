@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import EntryCard from "@/app/components/EntryCard";
+import TabBar from "@/app/components/ui/TabBar";
 import { EMOTION_COLORS } from "@/app/types";
 import type { Entry } from "@/app/types";
 
@@ -83,7 +84,11 @@ const THEMES = [
   { key: "dark", label: "夜", cls: "v2-dark" },
 ];
 
-const TABS = ["記録", "カレンダー", "グラフ"];
+const TABS = [
+  { key: "journal", label: "記録" },
+  { key: "calendar", label: "カレンダー" },
+  { key: "graph", label: "グラフ" },
+];
 
 // クリック位置から波紋を生成（既存 logout-ripple の汎用版）
 function spawnRipple(e: React.PointerEvent<HTMLElement>) {
@@ -100,7 +105,7 @@ function spawnRipple(e: React.PointerEvent<HTMLElement>) {
 export default function PreviewPage() {
   const [theme, setTheme] = useState("light");
   const [version, setVersion] = useState<"v1" | "v2">("v2");
-  const [tab, setTab] = useState(0);
+  const [tabKey, setTabKey] = useState("journal");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [toastOn, setToastOn] = useState(false);
   const [favorites, setFavorites] = useState<Set<string>>(
@@ -276,45 +281,10 @@ export default function PreviewPage() {
             </div>
           </Section>
 
-          {/* 3. タブ（スライドインジケータ） */}
-          <Section title="タブ" caption="下線がすっと滑って移動する（Google 検索タブの感覚）。">
-            <div style={{ position: "relative", display: "flex", gap: 4, borderBottom: "1px solid var(--border)" }}>
-              {TABS.map((label, i) => (
-                <button
-                  key={label}
-                  onClick={() => setTab(i)}
-                  style={{
-                    flex: 1,
-                    padding: "10px 0",
-                    fontSize: 13,
-                    letterSpacing: "0.1em",
-                    background: "transparent",
-                    border: "none",
-                    cursor: "pointer",
-                    color: tab === i ? "var(--text-primary)" : "var(--text-muted)",
-                    transition: "color var(--duration-normal) var(--easing-calm)",
-                  }}
-                >
-                  {label}
-                </button>
-              ))}
-              {version === "v2" ? (
-                <span
-                  className="v2-tab-indicator"
-                  style={{ width: `${100 / TABS.length}%`, transform: `translateX(${tab * 100}%)`, left: 0 }}
-                />
-              ) : (
-                <span
-                  style={{
-                    position: "absolute",
-                    bottom: 0,
-                    left: `${(tab * 100) / TABS.length}%`,
-                    width: `${100 / TABS.length}%`,
-                    height: 2,
-                    background: "var(--tab-active)",
-                  }}
-                />
-              )}
+          {/* 3. タブ（スライドインジケータ。本体と同じ TabBar・左寄せ可変幅で検証） */}
+          <Section title="タブ" caption="下線が実寸を測ってアクティブタブへ滑る（左寄せ・可変幅。ホーム本体と同一コンポーネント）。">
+            <div style={{ borderBottom: "1px solid var(--border)" }}>
+              <TabBar tabs={TABS} active={tabKey} onChange={setTabKey} ariaLabel="プレビュータブ" />
             </div>
           </Section>
 

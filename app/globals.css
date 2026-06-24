@@ -495,6 +495,21 @@ textarea { caret-color: var(--green); }
   .ripple-ink { animation: none; opacity: 0; }
 }
 
+/* タブのスライドインジケータ（TabBar が実寸で transform/width を制御） */
+.tab-indicator {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 1.5px;
+  background: var(--tab-active);
+  border-radius: 2px;
+  transition: transform var(--duration-normal) var(--easing-emphasized),
+              width var(--duration-normal) var(--easing-emphasized);
+}
+@media (prefers-reduced-motion: reduce) {
+  .tab-indicator { transition: none; }
+}
+
 /* elevation ユーティリティ（カード等の静止影。shadow-sm 等の置換先） */
 .elev-1 { box-shadow: var(--shadow-1); }
 .elev-2 { box-shadow: var(--shadow-2); }

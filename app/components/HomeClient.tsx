@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { logout } from "../auth/actions";
 import EntryCard from "./EntryCard";
 import Toast from "./ui/Toast";
+import TabBar from "./ui/TabBar";
 import { ABOUT_INTRO, ABOUT_FIRST_STEP } from "../lib/about";
 import { spawnRipple } from "../lib/ripple";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
@@ -574,25 +575,14 @@ export default function HomeClient({ initialEntries, userEmail, isAdmin }: HomeC
           </div>
 
           {/* タブ */}
-          <div className="flex gap-5 mt-4" role="tablist" aria-label="表示切替">
-            {TAB_LABELS.map(({ key, label }) => (
-              <button
-                key={key}
-                role="tab"
-                aria-selected={tab === key}
-                aria-controls={`panel-${key}`}
-                id={`tab-${key}`}
-                onClick={() => setTab(key)}
-                className="pb-3 text-xs tracking-widest transition-colors"
-                style={{
-                  color: tab === key ? "var(--text-secondary)" : "var(--text-muted)",
-                  borderBottom: tab === key ? "1.5px solid var(--tab-active)" : "1.5px solid transparent",
-                }}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
+          <TabBar
+            tabs={TAB_LABELS}
+            active={tab}
+            onChange={(key) => setTab(key as Tab)}
+            ariaLabel="表示切替"
+            withPanels
+            className="mt-4"
+          />
         </div>
       </header>
 
