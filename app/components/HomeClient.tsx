@@ -37,6 +37,10 @@ const LOADING_QUESTIONS: Record<"negative" | "positive" | "neutral", string[]> =
 
 const PHASE_LABELS = ["読んでいます", "感じています", "ことばを選んでいます"] as const;
 
+// 新規記録の id（タイムスタンプ文字列）。Date.now() を render 解析対象の
+// コンポーネント外へ退避して purity ルールを満たす（生成値は従来と同一）。
+const makeEntryId = () => Date.now().toString();
+
 const detectTone = (text: string): keyof typeof LOADING_QUESTIONS => {
   if (/疲|つら|辛|悲|苦|怒|不安|心配|嫌|落ち込|きつ|しんど|泣|痛|怖|絶望|無理/.test(text)) return "negative";
   if (/嬉|楽し|よかっ|良かっ|最高|うれし|幸|ありがた|充実|達成|できた|頑張|嬉しい/.test(text)) return "positive";
@@ -195,7 +199,7 @@ export default function HomeClient({ initialEntries, userEmail, isAdmin }: HomeC
       const userId = claimsData.claims.sub;
 
       const entry: Entry = {
-        id: Date.now().toString(),
+        id: makeEntryId(),
         content,
         comment:      data.comment,
         emotions:     data.emotions || [],
