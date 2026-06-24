@@ -116,12 +116,17 @@ export default function HomeClient({ initialEntries, userEmail, isAdmin }: HomeC
 
   // 記録・ユーザー情報はサーバー（app/page.tsx）から props で受け取る。
   // ここではブラウザ専用の下書き・今週の凪キャッシュのみ復元する。
+  // localStorage は SSR で読めないため、マウント後に effect で一度だけ反映する。
+  // lazy useState にすると server("")↔client(値あり) でハイドレーション不一致を
+  // 招くため、ここでの同期 setState は意図的（react-hooks/set-state-in-effect を個別許容）。
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     const draft = localStorage.getItem("nagi-draft");
     if (draft) setContent(draft);
     const cachedWeekly = localStorage.getItem(`nagi-weekly-${weekStartKey()}`);
     if (cachedWeekly) setWeeklySummary(cachedWeekly);
   }, []);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   // ウェルカムを閉じた直後、モバイルのアプリ内ブラウザで残るスクロールずれを最上部に戻す
   // （Radix Dialog の自動フォーカス／scroll-lock 起因で本文上部が sticky ヘッダーに隠れるのを防ぐ）
@@ -129,9 +134,11 @@ export default function HomeClient({ initialEntries, userEmail, isAdmin }: HomeC
     if (!showWelcome) window.scrollTo(0, 0);
   }, [showWelcome]);
 
-  // ローディング中のフェーズサイクル
+  // ローディング中のフェーズサイクル。
+  // リセット（フェーズ0）は送信開始時（handleSubmit）に行い、effect 内では
+  // 同期 setState を行わない（react-hooks/set-state-in-effect 対策）。
   useEffect(() => {
-    if (!loading) { setLoadingPhase(0); return; }
+    if (!loading) return;
     const t1 = setTimeout(() => setLoadingPhase(1), 1800);
     const t2 = setTimeout(() => setLoadingPhase(2), 3800);
     return () => { clearTimeout(t1); clearTimeout(t2); };
@@ -164,6 +171,7 @@ export default function HomeClient({ initialEntries, userEmail, isAdmin }: HomeC
 
   const handleSubmit = async () => {
     if (!content.trim()) return;
+    setLoadingPhase(0);
     setLoading(true);
     setError("");
     setLoadingQuestion(null);
