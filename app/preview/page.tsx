@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import EntryCard from "@/app/components/EntryCard";
+import Welcome from "@/app/components/Welcome";
 import TabBar from "@/app/components/ui/TabBar";
 import { EMOTION_COLORS } from "@/app/types";
 import type { Entry } from "@/app/types";
@@ -107,6 +108,7 @@ export default function PreviewPage() {
   const [version, setVersion] = useState<"v1" | "v2">("v2");
   const [tabKey, setTabKey] = useState("journal");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [welcomeOpen, setWelcomeOpen] = useState(false);
   const [toastOn, setToastOn] = useState(false);
   const [favorites, setFavorites] = useState<Set<string>>(
     new Set(SAMPLE_ENTRIES.filter((e) => e.isFavorited).map((e) => e.id))
@@ -319,6 +321,19 @@ export default function PreviewPage() {
                 />
               ))}
             </div>
+          </Section>
+
+          {/* 6. ウェルカム画面（初回 0 件時のフルスクリーン・ホーム本体と同一コンポーネント） */}
+          <Section title="ウェルカム画面" caption="記録 0 件時に出る初回案内。ホーム本体と同じ Welcome を描画（Radix Portal のため body 直下に出ます）。">
+            <button
+              className="v2-btn"
+              onPointerDown={spawnRipple}
+              onClick={() => setWelcomeOpen(true)}
+              style={{ padding: "9px 22px", fontSize: 13 }}
+            >
+              ウェルカムを開く
+            </button>
+            <Welcome open={welcomeOpen} onOpenChange={setWelcomeOpen} />
           </Section>
         </div>
 
