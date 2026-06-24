@@ -472,6 +472,9 @@ textarea { caret-color: var(--green); }
   /* トーストのスライドイン無し（瞬時表示） */
   .toast-in { animation: none; opacity: 1; }
 
+  /* 記録カードのフェードアップ・stagger 無し（!important でインライン animation を上書き） */
+  .entry-card-anim { animation: none !important; }
+
   /* 波紋は控えめ：拡張せず opacity だけ穏やかに揺らす */
   .loading-ring {
     animation: ripple-soft 2.6s ease-in-out infinite !important;

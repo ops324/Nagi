@@ -869,7 +869,7 @@ export default function HomeClient({ initialEntries, userEmail, isAdmin }: HomeC
                 );
               return filteredEntries.length > 0 ? (
               <div className="space-y-4">
-                {filteredEntries.map((entry) => {
+                {filteredEntries.map((entry, entryIndex) => {
                   // 編集モード: EntryCard の代わりにインライン編集UIを表示
                   if (editingId === entry.id) {
                     return (
@@ -988,6 +988,7 @@ export default function HomeClient({ initialEntries, userEmail, isAdmin }: HomeC
                       noteSaved={savedNoteIds.has(entry.id)}
                       highlighted={highlightedEntryId === entry.id}
                       isNew={newEntryId === entry.id}
+                      index={entryIndex}
                       menuSlot={
                         deletingId === entry.id ? (
                           <div className="flex items-center gap-2" role="group" aria-live="polite" aria-label="削除確認">
