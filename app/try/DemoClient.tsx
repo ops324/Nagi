@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { Entry, Emotion, EMOTION_COLORS } from "../types";
 import EntryCard from "../components/EntryCard";
@@ -126,7 +127,7 @@ export default function DemoClient() {
       <div className="text-center mb-8">
         <div className="flex items-center justify-center gap-3">
           <div className="w-12 h-12 rounded-2xl overflow-hidden">
-            <img src="/icon-nagi.png" alt="Nagi" className="w-12 h-12 block" />
+            <Image src="/icon-nagi.png" alt="Nagi" width={48} height={48} className="w-12 h-12 block" />
           </div>
           <h1 className="text-4xl font-extralight tracking-[0.3em]" style={{ color: "var(--text-secondary)" }}>凪</h1>
         </div>
