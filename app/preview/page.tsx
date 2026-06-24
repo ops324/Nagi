@@ -76,10 +76,38 @@ const SAMPLE_ENTRIES: Entry[] = [
   },
 ];
 
+const THEMES = [
+  { key: "light", label: "昼", cls: "v2-light" },
+  { key: "morning", label: "朝", cls: "v2-morning" },
+  { key: "evening", label: "夕", cls: "v2-evening" },
+  { key: "dark", label: "夜", cls: "v2-dark" },
+];
+
+const TABS = ["記録", "カレンダー", "グラフ"];
+
+// クリック位置から波紋を生成（既存 logout-ripple の汎用版）
+function spawnRipple(e: React.PointerEvent<HTMLElement>) {
+  const btn = e.currentTarget;
+  const rect = btn.getBoundingClientRect();
+  const span = document.createElement("span");
+  span.className = "v2-ripple";
+  span.style.left = `${e.clientX - rect.left}px`;
+  span.style.top = `${e.clientY - rect.top}px`;
+  btn.appendChild(span);
+  span.addEventListener("animationend", () => span.remove());
+}
+
 export default function PreviewPage() {
+  const [theme, setTheme] = useState("light");
+  const [version, setVersion] = useState<"v1" | "v2">("v2");
+  const [tab, setTab] = useState(0);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [toastOn, setToastOn] = useState(false);
   const [favorites, setFavorites] = useState<Set<string>>(
     new Set(SAMPLE_ENTRIES.filter((e) => e.isFavorited).map((e) => e.id))
   );
+
+  const themeCls = THEMES.find((t) => t.key === theme)?.cls ?? "";
 
   const toggleFavorite = (id: string) => {
     setFavorites((prev) => {
@@ -90,42 +118,333 @@ export default function PreviewPage() {
     });
   };
 
+  const showToast = () => {
+    setToastOn(true);
+    window.setTimeout(() => setToastOn(false), 2200);
+  };
+
   return (
-    <div
-      className="min-h-screen py-12 px-6"
-      style={{ backgroundColor: "var(--bg)" }}
-    >
-      <div className="max-w-lg mx-auto space-y-6">
-        {/* ヘッダー */}
-        <div className="mb-10">
-          <p
-            className="text-xs tracking-[0.3em] mb-1"
-            style={{ color: "var(--text-muted)" }}
-          >
-            DESIGN PREVIEW
-          </p>
-          <h1
-            className="text-xl font-light tracking-[0.15em]"
-            style={{ color: "var(--text-secondary)" }}
-          >
-            EntryCard ショーケース
-          </h1>
-          <p className="text-xs mt-2" style={{ color: "var(--text-subtle)" }}>
-            3種類のinsightLevel（moderate / gentle / deep）とエネルギーレベルの違いを確認
-          </p>
+    <div style={{ minHeight: "100vh", background: "#e9e6df" }}>
+      {/* ── コントロールバー（ラボ操作。テーマ非依存の中立色） ── */}
+      <div
+        style={{
+          position: "sticky",
+          top: 0,
+          zIndex: 40,
+          background: "rgba(245,243,238,0.92)",
+          backdropFilter: "blur(8px)",
+          borderBottom: "1px solid #ddd8d0",
+          padding: "12px 16px",
+        }}
+      >
+        <div className="max-w-lg mx-auto flex flex-wrap items-center gap-3">
+          <span style={{ fontSize: 11, letterSpacing: "0.2em", color: "#78716c" }}>
+            DESIGN LAB
+          </span>
+
+          {/* テーマ切替 */}
+          <div className="flex gap-1">
+            {THEMES.map((t) => (
+              <button
+                key={t.key}
+                onClick={() => setTheme(t.key)}
+                style={{
+                  fontSize: 12,
+                  padding: "4px 12px",
+                  borderRadius: 9999,
+                  border: "1px solid",
+                  borderColor: theme === t.key ? "#a8a29e" : "#ddd8d0",
+                  background: theme === t.key ? "#44403c" : "transparent",
+                  color: theme === t.key ? "#fff" : "#78716c",
+                  cursor: "pointer",
+                }}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Before / After */}
+          <div className="flex gap-1 ml-auto">
+            {(["v1", "v2"] as const).map((v) => (
+              <button
+                key={v}
+                onClick={() => setVersion(v)}
+                style={{
+                  fontSize: 12,
+                  padding: "4px 12px",
+                  borderRadius: 9999,
+                  border: "1px solid",
+                  borderColor: version === v ? "#6ee7b7" : "#ddd8d0",
+                  background: version === v ? "#6ee7b7" : "transparent",
+                  color: version === v ? "#065f46" : "#78716c",
+                  cursor: "pointer",
+                  fontWeight: version === v ? 500 : 400,
+                }}
+              >
+                {v === "v1" ? "Before" : "After"}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ── プレビュー面（テーマクラス + data-design スコープ。key で再マウントしアニメ再生） ── */}
+      <div
+        key={`${theme}-${version}`}
+        className={themeCls}
+        data-design={version}
+        style={{ background: "var(--bg)", color: "var(--text-primary)", paddingBottom: 80 }}
+      >
+        <div className="max-w-lg mx-auto px-6 py-10 space-y-12">
+          {/* 見出し */}
+          <header>
+            <p
+              style={{
+                fontSize: "var(--text-label)",
+                letterSpacing: "0.3em",
+                color: "var(--text-muted)",
+              }}
+            >
+              NAGI · {version === "v2" ? "刷新案 (After)" : "現状相当 (Before)"}
+            </p>
+            <h1
+              className="font-light"
+              style={{
+                fontSize: "1.4rem",
+                letterSpacing: "0.12em",
+                color: "var(--text-secondary)",
+                marginTop: 4,
+              }}
+            >
+              静けさを守りつつ、上質さを足す
+            </h1>
+          </header>
+
+          {/* 1. Elevation スケール */}
+          <Section title="奥行き（elevation）" caption="紙がそっと浮き沈みする段階。カードは最大3段、ダイアログのみ深く。">
+            <div className="grid grid-cols-5 gap-3">
+              {[1, 2, 3, 4, 5].map((n) => (
+                <div
+                  key={n}
+                  className={`v2-elev-${n}`}
+                  style={{
+                    background: "var(--bg-card)",
+                    borderRadius: "var(--radius-md)",
+                    border: "1px solid var(--border)",
+                    height: 64,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: 12,
+                    color: "var(--text-muted)",
+                  }}
+                >
+                  {n}
+                </div>
+              ))}
+            </div>
+          </Section>
+
+          {/* 2. ボタン操作感 */}
+          <Section title="操作感（ボタン）" caption="押すと沈み、波紋が広がる。hover で柔らかく明るむ。実際に押してみてください。">
+            <div className="flex items-center gap-4 flex-wrap">
+              <button className="v2-btn" onPointerDown={spawnRipple} style={{ padding: "10px 28px", fontSize: 13, letterSpacing: "0.1em" }}>
+                記録する
+              </button>
+              <button
+                className="v2-icon-btn"
+                onPointerDown={spawnRipple}
+                aria-label="共有"
+                style={{ width: 44, height: 44, display: "grid", placeItems: "center", color: "var(--text-secondary)" }}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+                  <circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" />
+                  <path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4" />
+                </svg>
+              </button>
+              <button
+                className="v2-icon-btn"
+                onPointerDown={spawnRipple}
+                aria-label="アカウント"
+                style={{ width: 44, height: 44, display: "grid", placeItems: "center", color: "var(--text-secondary)" }}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+                  <circle cx="12" cy="8" r="4" /><path d="M4 20c0-4 4-6 8-6s8 2 8 6" />
+                </svg>
+              </button>
+            </div>
+          </Section>
+
+          {/* 3. タブ（スライドインジケータ） */}
+          <Section title="タブ" caption="下線がすっと滑って移動する（Google 検索タブの感覚）。">
+            <div style={{ position: "relative", display: "flex", gap: 4, borderBottom: "1px solid var(--border)" }}>
+              {TABS.map((label, i) => (
+                <button
+                  key={label}
+                  onClick={() => setTab(i)}
+                  style={{
+                    flex: 1,
+                    padding: "10px 0",
+                    fontSize: 13,
+                    letterSpacing: "0.1em",
+                    background: "transparent",
+                    border: "none",
+                    cursor: "pointer",
+                    color: tab === i ? "var(--text-primary)" : "var(--text-muted)",
+                    transition: "color var(--duration-normal) var(--easing-calm)",
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+              {version === "v2" ? (
+                <span
+                  className="v2-tab-indicator"
+                  style={{ width: `${100 / TABS.length}%`, transform: `translateX(${tab * 100}%)`, left: 0 }}
+                />
+              ) : (
+                <span
+                  style={{
+                    position: "absolute",
+                    bottom: 0,
+                    left: `${(tab * 100) / TABS.length}%`,
+                    width: `${100 / TABS.length}%`,
+                    height: 2,
+                    background: "var(--tab-active)",
+                  }}
+                />
+              )}
+            </div>
+          </Section>
+
+          {/* 4. Dialog / Toast */}
+          <Section title="ダイアログ・トースト" caption="出現はふっと膨らみながら（emphasized）。下のボタンで確認。">
+            <div className="flex gap-4 flex-wrap">
+              <button className="v2-btn" onPointerDown={spawnRipple} onClick={() => setDialogOpen(true)} style={{ padding: "9px 22px", fontSize: 13 }}>
+                ダイアログを開く
+              </button>
+              <button
+                className="v2-icon-btn"
+                onPointerDown={spawnRipple}
+                onClick={showToast}
+                style={{ padding: "9px 22px", fontSize: 13, borderRadius: 9999, border: "1px solid var(--border)", color: "var(--text-secondary)" }}
+              >
+                トーストを出す
+              </button>
+            </div>
+          </Section>
+
+          {/* 5. 記録カード（stagger） */}
+          <Section title="記録カード" caption="一覧はわずかな時間差で立ち上がる（stagger）。テーマや Before/After を切替えると再生されます。">
+            <div className="v2-stagger space-y-5">
+              {SAMPLE_ENTRIES.map((entry) => (
+                <EntryCard
+                  key={entry.id}
+                  entry={{ ...entry, isFavorited: favorites.has(entry.id) }}
+                  emotionGradient={emotionGradient}
+                  EMOTION_COLORS={EMOTION_COLORS}
+                  onToggleFavorite={toggleFavorite}
+                  onNoteChange={(id, value) => console.log("note:", id, value)}
+                />
+              ))}
+            </div>
+          </Section>
         </div>
 
-        {SAMPLE_ENTRIES.map((entry) => (
-          <EntryCard
-            key={entry.id}
-            entry={{ ...entry, isFavorited: favorites.has(entry.id) }}
-            emotionGradient={emotionGradient}
-            EMOTION_COLORS={EMOTION_COLORS}
-            onToggleFavorite={toggleFavorite}
-            onNoteChange={(id, value) => console.log("note:", id, value)}
-          />
-        ))}
+        {/* Dialog */}
+        {dialogOpen && (
+          <div
+            onClick={() => setDialogOpen(false)}
+            style={{
+              position: "fixed",
+              inset: 0,
+              zIndex: 50,
+              background: "rgba(0,0,0,0.5)",
+              backdropFilter: "blur(4px)",
+              display: "grid",
+              placeItems: "center",
+              padding: 24,
+            }}
+          >
+            <div
+              className={version === "v2" ? "v2-dialog" : ""}
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                background: "var(--bg-card)",
+                borderRadius: "var(--radius-lg)",
+                border: "1px solid var(--border)",
+                boxShadow: version === "v2" ? "var(--shadow-5)" : "0 10px 40px rgba(0,0,0,0.2)",
+                padding: 28,
+                maxWidth: 360,
+                width: "100%",
+              }}
+            >
+              <h3 style={{ fontSize: "var(--text-title)", color: "var(--text-primary)", marginBottom: 10 }}>
+                記録を削除しますか
+              </h3>
+              <p style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.8, marginBottom: 20 }}>
+                この操作は取り消せません。静かに確認してから進めてください。
+              </p>
+              <div className="flex justify-end gap-3">
+                <button
+                  className="v2-icon-btn"
+                  onPointerDown={spawnRipple}
+                  onClick={() => setDialogOpen(false)}
+                  style={{ padding: "8px 18px", fontSize: 13, borderRadius: 9999, border: "1px solid var(--border)", color: "var(--text-secondary)" }}
+                >
+                  とどまる
+                </button>
+                <button
+                  className="v2-btn"
+                  onPointerDown={spawnRipple}
+                  onClick={() => setDialogOpen(false)}
+                  style={{ padding: "8px 18px", fontSize: 13 }}
+                >
+                  削除する
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Toast */}
+        {toastOn && (
+          <div
+            className="toast-in"
+            style={{
+              position: "fixed",
+              left: "50%",
+              bottom: 24,
+              transform: "translateX(-50%)",
+              zIndex: 50,
+              background: "var(--bg-card)",
+              border: "1px solid var(--border)",
+              borderRadius: 9999,
+              boxShadow: version === "v2" ? "var(--shadow-3)" : "0 4px 16px rgba(0,0,0,0.12)",
+              padding: "10px 22px",
+              fontSize: 13,
+              color: "var(--text-primary)",
+            }}
+          >
+            記録を保存しました
+          </div>
+        )}
       </div>
     </div>
+  );
+}
+
+function Section({ title, caption, children }: { title: string; caption: string; children: React.ReactNode }) {
+  return (
+    <section>
+      <h2 style={{ fontSize: "var(--text-body)", color: "var(--text-primary)", letterSpacing: "0.08em", marginBottom: 4 }}>
+        {title}
+      </h2>
+      <p style={{ fontSize: "var(--text-meta)", color: "var(--text-muted)", marginBottom: 16, lineHeight: 1.7 }}>
+        {caption}
+      </p>
+      {children}
+    </section>
   );
 }
