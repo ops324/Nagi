@@ -3,6 +3,7 @@
 import { useState } from "react";
 import EntryCard from "@/app/components/EntryCard";
 import Welcome from "@/app/components/Welcome";
+import AccountMenu from "@/app/components/AccountMenu";
 import TabBar from "@/app/components/ui/TabBar";
 import { EMOTION_COLORS } from "@/app/types";
 import type { Entry } from "@/app/types";
@@ -109,6 +110,7 @@ export default function PreviewPage() {
   const [tabKey, setTabKey] = useState("journal");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [welcomeOpen, setWelcomeOpen] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
   const [toastOn, setToastOn] = useState(false);
   const [favorites, setFavorites] = useState<Set<string>>(
     new Set(SAMPLE_ENTRIES.filter((e) => e.isFavorited).map((e) => e.id))
@@ -334,6 +336,19 @@ export default function PreviewPage() {
               ウェルカムを開く
             </button>
             <Welcome open={welcomeOpen} onOpenChange={setWelcomeOpen} />
+          </Section>
+
+          {/* 7. アカウントメニュー（ボトムシート・ホーム本体と同一コンポーネント） */}
+          <Section title="アカウントメニュー" caption="ヘッダのアカウントアイコンから出るボトムシート。ホーム本体と同じ AccountMenu を描画（ログアウトは Server Action のためラボでは押さないでください）。">
+            <button
+              className="v2-btn"
+              onPointerDown={spawnRipple}
+              onClick={() => setAccountOpen(true)}
+              style={{ padding: "9px 22px", fontSize: 13 }}
+            >
+              メニューを開く
+            </button>
+            <AccountMenu open={accountOpen} userEmail="user@example.com" onClose={() => setAccountOpen(false)} />
           </Section>
         </div>
 
