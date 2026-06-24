@@ -140,7 +140,6 @@ export default function EmotionCalendar({ entries, onNavigateToEntry }: Props) {
     offset: `${(i / Math.max(chartData.length - 1, 1)) * 100}%`,
     color: EMOTION_COLORS[d.dominant] || "#6ee7b7",
   }));
-  const lastColor = gradientStops[gradientStops.length - 1]?.color || "#6ee7b7";
 
   // v1.41: WCAG AA 準拠のためコントラスト強化
   const mutedColor  = isDark ? "#908a85" : "#74706a";

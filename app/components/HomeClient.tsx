@@ -486,12 +486,6 @@ export default function HomeClient({ initialEntries, userEmail, isAdmin }: HomeC
     }
   };
 
-  const fmtDate = (iso: string) =>
-    new Date(iso).toLocaleDateString("ja-JP", {
-      year: "numeric", month: "long", day: "numeric",
-      hour: "2-digit", minute: "2-digit",
-    });
-
   const TAB_LABELS: { key: Tab; label: string }[] = [
     { key: "journal",  label: "記録" },
     { key: "calendar", label: "カレンダー" },
