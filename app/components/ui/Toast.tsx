@@ -16,8 +16,8 @@ export default function Toast({ message, actionLabel, onAction }: ToastProps) {
       style={{ bottom: "calc(env(safe-area-inset-bottom) + 20px)" }}
     >
       <div
-        className="flex items-center gap-4 rounded-full pl-5 pr-2 py-2 shadow-md"
-        style={{ backgroundColor: "var(--bg-card)", border: "1px solid var(--border)" }}
+        className="flex items-center gap-4 rounded-full pl-5 pr-2 py-2"
+        style={{ backgroundColor: "var(--bg-card)", border: "1px solid var(--border)", boxShadow: "var(--shadow-3)" }}
       >
         <span className="text-xs tracking-wide" style={{ color: "var(--text-secondary)" }}>
           {message}

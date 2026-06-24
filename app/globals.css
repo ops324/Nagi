@@ -337,7 +337,7 @@
 }
 
 .toast-in {
-  animation: toast-in 0.3s ease both;
+  animation: toast-in 0.34s var(--easing-emphasized) both;
 }
 
 /* ── Account Sheet ── */
@@ -358,7 +358,7 @@
 }
 
 .account-sheet {
-  animation: sheet-slide-up 0.32s var(--easing-calm) both;
+  animation: sheet-slide-up 0.36s var(--easing-emphasized) both;
 }
 
 /* ── Logout Ripple Button ── */
@@ -443,6 +443,69 @@ textarea { caret-color: var(--green); }
   box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--green) 22%, transparent),
               0 6px 24px color-mix(in srgb, var(--green) 6%, transparent);
   border-color: color-mix(in srgb, var(--green) 35%, var(--border)) !important;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   ボタン操作感（v2 本体適用：state layer / 押下の沈み / リップル）
+   ─────────────────────────────────────────────────────────────
+   既存ボタンに className を足すだけで適用できる薄いユーティリティ。
+   背景色はインライン指定を尊重し、box-shadow と transform で「触れた感」を出す。
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.btn-primary {
+  position: relative;
+  overflow: hidden;
+  box-shadow: var(--shadow-1);
+  transition: box-shadow var(--duration-normal) var(--easing-calm),
+              transform var(--duration-fast) var(--easing-calm),
+              background-color var(--duration-fast) var(--easing-calm),
+              color var(--duration-fast) var(--easing-calm);
+}
+@media (hover: hover) {
+  .btn-primary:not(:disabled):hover { box-shadow: var(--shadow-2); }
+}
+.btn-primary:not(:disabled):active { transform: scale(0.97); }
+
+/* ghost / アイコンボタン：触れた所に薄い膜（state layer） */
+.btn-ghost {
+  position: relative;
+  overflow: hidden;
+  transition: background-color var(--duration-fast) var(--easing-calm);
+}
+@media (hover: hover) {
+  .btn-ghost:hover { background-color: var(--state-hover); }
+}
+.btn-ghost:active { background-color: var(--state-press); }
+
+/* 汎用リップル：JS が span.ripple-ink をクリック位置に生成 */
+.ripple-ink {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  margin: -6px 0 0 -6px;
+  border-radius: 50%;
+  background: rgb(var(--shadow-color) / 0.16);
+  transform: scale(0);
+  pointer-events: none;
+  animation: v2-ripple-expand 0.6s var(--easing-calm) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn-primary:not(:disabled):active,
+  .btn-ghost:active { transform: none; }
+  .ripple-ink { animation: none; opacity: 0; }
+}
+
+/* elevation ユーティリティ（カード等の静止影。shadow-sm 等の置換先） */
+.elev-1 { box-shadow: var(--shadow-1); }
+.elev-2 { box-shadow: var(--shadow-2); }
+.elev-3 { box-shadow: var(--shadow-3); }
+
+/* Dialog / Overlay 出現（本体適用：emphasized の scale+fade） */
+.dialog-pop { animation: v2-dialog-in 0.3s var(--easing-emphasized) both; }
+.overlay-fade { animation: overlay-fade-in 0.2s var(--easing-calm) both; }
+@media (prefers-reduced-motion: reduce) {
+  .dialog-pop { animation: none; }
+  .overlay-fade { animation: none; }
 }
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

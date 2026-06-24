@@ -15,7 +15,7 @@ export function Dialog({ open, onOpenChange, title, description, children }: Dia
     <RadixDialog.Root open={open} onOpenChange={onOpenChange}>
       <RadixDialog.Portal>
         <RadixDialog.Overlay
-          className="fixed inset-0 z-40"
+          className="fixed inset-0 z-40 overlay-fade"
           style={{ backgroundColor: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)" }}
         />
         <RadixDialog.Content
@@ -23,8 +23,8 @@ export function Dialog({ open, onOpenChange, title, description, children }: Dia
           aria-describedby={description ? "dialog-description" : undefined}
         >
           <div
-            className="rounded-3xl p-6 shadow-xl"
-            style={{ backgroundColor: "var(--bg-card)", border: "1px solid var(--border)" }}
+            className="rounded-3xl p-6 dialog-pop"
+            style={{ backgroundColor: "var(--bg-card)", border: "1px solid var(--border)", boxShadow: "var(--shadow-5)" }}
           >
             <RadixDialog.Title
               className="text-sm tracking-widest mb-2"
