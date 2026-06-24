@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Entry, Emotion, EMOTION_COLORS } from "../types";
 import EntryCard from "../components/EntryCard";
 import { ABOUT_INTRO } from "../lib/about";
+import { spawnRipple } from "../lib/ripple";
 
 // ── HomeClient と共通の演出ロジック（お試し用に最小限を独立保持） ──
 // HomeClient（約1190行・state密結合）への依存を避けるため、ここでは小さく再定義する。
@@ -145,7 +146,7 @@ export default function DemoClient() {
 
       {/* 入力カード（応答前のみ表示） */}
       {!result && (
-        <div className="input-card rounded-3xl p-[27px] shadow-sm"
+        <div className="input-card rounded-3xl p-[27px] elev-1"
           style={{ backgroundColor: "var(--bg-card)", border: "1px solid var(--border)" }}>
           <p className="text-xs tracking-widest mb-4" style={{ color: "var(--text-muted)" }}>今日の記録</p>
 
@@ -192,8 +193,9 @@ export default function DemoClient() {
             <div className="flex items-center justify-end mt-4">
               <button
                 onClick={handleSubmit}
+                onPointerDown={spawnRipple}
                 disabled={!content.trim()}
-                className="px-7 py-2.5 rounded-full text-xs tracking-widest transition-all"
+                className="btn-primary px-7 py-2.5 rounded-full text-xs tracking-widest"
                 style={{
                   backgroundColor: !content.trim() ? "var(--bg-disabled)" : "var(--green)",
                   color:           !content.trim() ? "var(--text-disabled)" : "var(--color-btn-text)",
@@ -228,7 +230,8 @@ export default function DemoClient() {
             </p>
             <Link
               href="/auth/signup"
-              className="inline-block px-10 py-3 rounded-full text-xs tracking-widest transition-all"
+              onPointerDown={spawnRipple}
+              className="btn-primary inline-block px-10 py-3 rounded-full text-xs tracking-widest"
               style={{ backgroundColor: "var(--green)", color: "var(--color-btn-text)" }}
             >
               はじめる

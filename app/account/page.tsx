@@ -150,7 +150,7 @@ export default function AccountPage() {
       <main className="max-w-lg mx-auto px-6 py-8 space-y-6">
 
         {/* ── 凪について ── */}
-        <section className="rounded-3xl p-6 shadow-sm"
+        <section className="rounded-3xl p-6 elev-1"
           style={{ backgroundColor: "var(--bg-card)", border: "1px solid var(--border)" }}>
           <p className="text-xs tracking-widest mb-4" style={{ color: "var(--text-muted)" }}>凪について</p>
           <p className="text-xs leading-loose" style={{ color: "var(--text-secondary)" }}>
@@ -159,7 +159,7 @@ export default function AccountPage() {
         </section>
 
         {/* ── メールアドレス変更 ── */}
-        <section className="rounded-3xl p-6 shadow-sm"
+        <section className="rounded-3xl p-6 elev-1"
           style={{ backgroundColor: "var(--bg-card)", border: "1px solid var(--border)" }}>
           <p className="text-xs tracking-widest mb-5" style={{ color: "var(--text-muted)" }}>メールアドレスの変更</p>
 
@@ -197,7 +197,7 @@ export default function AccountPage() {
                 type="submit"
                 disabled={emailLoading || !newEmail.trim()}
                 aria-disabled={emailLoading || !newEmail.trim()}
-                className="px-6 py-2.5 rounded-full text-xs tracking-widest transition-all"
+                className="btn-primary px-6 py-2.5 rounded-full text-xs tracking-widest"
                 style={{
                   backgroundColor: emailLoading || !newEmail.trim() ? "var(--bg-disabled)" : "var(--green)",
                   color: emailLoading || !newEmail.trim() ? "var(--text-disabled)" : "var(--color-btn-text)",
@@ -211,7 +211,7 @@ export default function AccountPage() {
         </section>
 
         {/* ── パスワード変更 ── */}
-        <section className="rounded-3xl p-6 shadow-sm"
+        <section className="rounded-3xl p-6 elev-1"
           style={{ backgroundColor: "var(--bg-card)", border: "1px solid var(--border)" }}>
           <p className="text-xs tracking-widest mb-5" style={{ color: "var(--text-muted)" }}>パスワードの変更</p>
 
@@ -267,7 +267,7 @@ export default function AccountPage() {
                 type="submit"
                 disabled={passwordLoading || !newPassword || !confirmPassword}
                 aria-disabled={passwordLoading || !newPassword || !confirmPassword}
-                className="px-6 py-2.5 rounded-full text-xs tracking-widest transition-all"
+                className="btn-primary px-6 py-2.5 rounded-full text-xs tracking-widest"
                 style={{
                   backgroundColor: passwordLoading || !newPassword || !confirmPassword ? "var(--bg-disabled)" : "var(--green)",
                   color: passwordLoading || !newPassword || !confirmPassword ? "var(--text-disabled)" : "var(--color-btn-text)",
@@ -281,7 +281,7 @@ export default function AccountPage() {
         </section>
 
         {/* ── アカウント削除 ── */}
-        <section className="rounded-3xl p-6 shadow-sm"
+        <section className="rounded-3xl p-6 elev-1"
           style={{ backgroundColor: "var(--bg-card)", border: "1px solid var(--border)" }}>
           <p className="text-xs tracking-widest mb-2" style={{ color: "var(--text-muted)" }}>アカウントの削除</p>
           <p className="text-xs mb-5 leading-relaxed" style={{ color: "var(--text-muted)" }}>
@@ -385,7 +385,7 @@ export default function AccountPage() {
             <div className="flex justify-center pt-2">
               <button
                 onClick={() => router.replace("/auth/login")}
-                className="px-8 py-2.5 rounded-full text-xs tracking-widest transition-all"
+                className="btn-primary px-8 py-2.5 rounded-full text-xs tracking-widest"
                 style={{
                   backgroundColor: "var(--green)",
                   color: "var(--color-btn-text)",

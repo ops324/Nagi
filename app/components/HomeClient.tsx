@@ -8,6 +8,7 @@ import { logout } from "../auth/actions";
 import EntryCard from "./EntryCard";
 import Toast from "./ui/Toast";
 import { ABOUT_INTRO, ABOUT_FIRST_STEP } from "../lib/about";
+import { spawnRipple } from "../lib/ripple";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import * as RadixDialog from "@radix-ui/react-dialog";
 
@@ -522,7 +523,7 @@ export default function HomeClient({ initialEntries, userEmail, isAdmin }: HomeC
             <div className="flex items-center gap-2">
               {isAdmin && (
                 <a href="/admin"
-                  className="flex items-center justify-center w-11 h-11 rounded-full transition-colors"
+                  className="btn-ghost flex items-center justify-center w-11 h-11 rounded-full transition-colors"
                   style={{ color: "var(--text-muted)" }}
                   title="管理"
                   aria-label="管理者ダッシュボード">
@@ -540,7 +541,7 @@ export default function HomeClient({ initialEntries, userEmail, isAdmin }: HomeC
               {userEmail && (
                 <button
                   onClick={handleShare}
-                  className="flex items-center justify-center w-11 h-11 rounded-full transition-colors"
+                  className="btn-ghost flex items-center justify-center w-11 h-11 rounded-full transition-colors"
                   style={{ color: "var(--text-muted)", background: "none", border: "none", cursor: "pointer" }}
                   title="シェア"
                   aria-label="アプリをシェア">
@@ -556,7 +557,7 @@ export default function HomeClient({ initialEntries, userEmail, isAdmin }: HomeC
               {userEmail && (
                 <button
                   onClick={() => setShowAccountMenu(true)}
-                  className="flex items-center justify-center w-11 h-11 rounded-full transition-colors"
+                  className="btn-ghost flex items-center justify-center w-11 h-11 rounded-full transition-colors"
                   style={{ color: "var(--text-muted)", background: "none", border: "none", cursor: "pointer" }}
                   title="アカウントメニュー"
                   aria-label="アカウントメニュー">
@@ -603,8 +604,8 @@ export default function HomeClient({ initialEntries, userEmail, isAdmin }: HomeC
         {tab === "journal" && (
           <div role="tabpanel" id="panel-journal" aria-labelledby="tab-journal" className="space-y-5">
             {/* 入力エリア */}
-            <div className="input-card rounded-3xl p-[27px] shadow-sm"
-              style={{ backgroundColor: "var(--bg-card)", border: "1px solid var(--border)" }}>
+            <div className="input-card rounded-3xl p-[27px]"
+              style={{ backgroundColor: "var(--bg-card)", border: "1px solid var(--border)", boxShadow: "var(--shadow-1)" }}>
               <p className="text-xs tracking-widest mb-4" style={{ color: "var(--text-muted)" }}>今日の記録</p>
 
               {loading ? (
@@ -659,8 +660,9 @@ export default function HomeClient({ initialEntries, userEmail, isAdmin }: HomeC
                   </span>
                   <button
                     onClick={handleSubmit}
+                    onPointerDown={spawnRipple}
                     disabled={!content.trim()}
-                    className="px-7 py-2.5 rounded-full text-xs tracking-widest transition-all"
+                    className="btn-primary px-7 py-2.5 rounded-full text-xs tracking-widest"
                     style={{
                       backgroundColor: !content.trim() ? "var(--bg-disabled)" : "var(--green)",
                       color:           !content.trim() ? "var(--text-disabled)" : "var(--color-btn-text)",
@@ -769,7 +771,7 @@ export default function HomeClient({ initialEntries, userEmail, isAdmin }: HomeC
                   <button
                     onClick={() => setSearchQuery("")}
                     aria-label="検索をクリア"
-                    className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center justify-center w-6 h-6 rounded-full transition-colors hover:bg-black/5"
+                    className="btn-ghost absolute right-2 top-1/2 -translate-y-1/2 flex items-center justify-center w-6 h-6 rounded-full"
                     style={{ color: "var(--text-muted)" }}
                   >
                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2"
@@ -956,8 +958,9 @@ export default function HomeClient({ initialEntries, userEmail, isAdmin }: HomeC
                                 return (
                                   <button
                                     onClick={() => handleEditSave(entry.id)}
+                                    onPointerDown={spawnRipple}
                                     disabled={disabled}
-                                    className="text-xs tracking-widest px-5 py-2 rounded-full transition-all"
+                                    className="btn-primary text-xs tracking-widest px-5 py-2 rounded-full"
                                     style={{
                                       backgroundColor: disabled ? "var(--bg-disabled)" : "var(--green)",
                                       color:           disabled ? "var(--text-disabled)" : "var(--color-btn-text)",
@@ -1011,7 +1014,7 @@ export default function HomeClient({ initialEntries, userEmail, isAdmin }: HomeC
                           <DropdownMenu.Root>
                             <DropdownMenu.Trigger asChild>
                               <button
-                                className="flex items-center justify-center w-11 h-11 -mr-2 rounded-full transition-colors hover:bg-black/5"
+                                className="btn-ghost flex items-center justify-center w-11 h-11 -mr-2 rounded-full"
                                 style={{ color: "var(--text-muted)" }}
                                 aria-label="この記録のメニュー"
                               >
@@ -1026,12 +1029,12 @@ export default function HomeClient({ initialEntries, userEmail, isAdmin }: HomeC
                               <DropdownMenu.Content
                                 align="end"
                                 sideOffset={4}
-                                className="z-30 rounded-2xl overflow-hidden shadow-md"
-                                style={{ backgroundColor: "var(--bg-card)", border: "1px solid var(--border)", minWidth: "120px" }}
+                                className="z-30 rounded-2xl overflow-hidden"
+                                style={{ backgroundColor: "var(--bg-card)", border: "1px solid var(--border)", minWidth: "120px", boxShadow: "var(--shadow-3)" }}
                               >
                                 <DropdownMenu.Item
                                   onSelect={() => handleEditStart(entry)}
-                                  className="min-h-[44px] px-5 flex items-center text-xs tracking-widest cursor-pointer outline-none transition-colors hover:bg-black/5 data-[highlighted]:bg-black/5"
+                                  className="min-h-[44px] px-5 flex items-center text-xs tracking-widest cursor-pointer outline-none transition-colors hover:bg-[var(--state-hover)] data-[highlighted]:bg-[var(--state-hover)]"
                                   style={{ color: "var(--text-secondary)" }}
                                 >
                                   編集する
@@ -1039,7 +1042,7 @@ export default function HomeClient({ initialEntries, userEmail, isAdmin }: HomeC
                                 <DropdownMenu.Separator className="h-px" style={{ backgroundColor: "var(--border)" }} />
                                 <DropdownMenu.Item
                                   onSelect={() => setDeletingId(entry.id)}
-                                  className="min-h-[44px] px-5 flex items-center text-xs tracking-widest cursor-pointer outline-none transition-colors hover:bg-black/5 data-[highlighted]:bg-black/5"
+                                  className="min-h-[44px] px-5 flex items-center text-xs tracking-widest cursor-pointer outline-none transition-colors hover:bg-[var(--state-hover)] data-[highlighted]:bg-[var(--state-hover)]"
                                   style={{ color: "#ef4444" }}
                                 >
                                   削除する
@@ -1214,7 +1217,8 @@ export default function HomeClient({ initialEntries, userEmail, isAdmin }: HomeC
 
             <RadixDialog.Close asChild>
               <button
-                className="mt-10 text-xs tracking-widest px-8 py-3 rounded-full"
+                onPointerDown={spawnRipple}
+                className="btn-primary mt-10 text-xs tracking-widest px-8 py-3 rounded-full"
                 style={{ backgroundColor: "var(--green)", color: "var(--color-btn-text)" }}
               >
                 はじめる

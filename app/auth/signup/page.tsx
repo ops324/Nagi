@@ -113,7 +113,7 @@ export default function SignupPage() {
               type="submit"
               disabled={loading}
               aria-disabled={loading}
-              className="w-full py-3 rounded-full text-xs tracking-widest transition-all mt-2"
+              className="btn-primary w-full py-3 rounded-full text-xs tracking-widest mt-2"
               style={{
                 backgroundColor: loading ? "var(--bg-disabled)" : "var(--green)",
                 color: loading ? "var(--text-disabled)" : "var(--color-btn-text)",

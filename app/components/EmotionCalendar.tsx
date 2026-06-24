@@ -149,7 +149,7 @@ export default function EmotionCalendar({ entries, onNavigateToEntry }: Props) {
   return (
     <div className="space-y-4 pb-24">
       {/* ── グラフ ── */}
-      <div className="rounded-3xl p-6 shadow-sm"
+      <div className="rounded-3xl p-6 elev-1"
         style={{ backgroundColor: "var(--bg-card)", border: "1px solid var(--border)" }}>
         <p className="text-sm font-light tracking-wide mb-5" style={{ color: textColor }}>最近の心の動き</p>
         {chartData.length > 0 ? (
@@ -197,7 +197,7 @@ export default function EmotionCalendar({ entries, onNavigateToEntry }: Props) {
       </div>
 
       {/* ── カレンダー ── */}
-      <div className="rounded-3xl p-6 shadow-sm"
+      <div className="rounded-3xl p-6 elev-1"
         style={{ backgroundColor: "var(--bg-card)", border: "1px solid var(--border)" }}>
         {/* ナビ */}
         <div className="flex items-center justify-between mb-6">
