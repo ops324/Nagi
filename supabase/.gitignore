@@ -1,0 +1,6 @@
+# Supabase CLI のローカル状態（バージョン管理対象外）
+.branches
+.temp
+
+# 環境変数
+.env
