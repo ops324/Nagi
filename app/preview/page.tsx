@@ -5,6 +5,7 @@ import EntryCard from "@/app/components/EntryCard";
 import Welcome from "@/app/components/Welcome";
 import AccountMenu from "@/app/components/AccountMenu";
 import TabBar from "@/app/components/ui/TabBar";
+import SearchBar from "@/app/components/ui/SearchBar";
 import { EMOTION_COLORS } from "@/app/types";
 import type { Entry } from "@/app/types";
 
@@ -111,6 +112,7 @@ export default function PreviewPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [welcomeOpen, setWelcomeOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
+  const [search, setSearch] = useState("");
   const [toastOn, setToastOn] = useState(false);
   const [favorites, setFavorites] = useState<Set<string>>(
     new Set(SAMPLE_ENTRIES.filter((e) => e.isFavorited).map((e) => e.id))
@@ -349,6 +351,11 @@ export default function PreviewPage() {
               メニューを開く
             </button>
             <AccountMenu open={accountOpen} userEmail="user@example.com" onClose={() => setAccountOpen(false)} />
+          </Section>
+
+          {/* 8. 検索バー（記録一覧の全文検索・ホーム本体と同一コンポーネント） */}
+          <Section title="検索バー" caption="記録一覧の全文検索。入力するとクリアボタン（×）が現れる。ホーム本体と同じ SearchBar を描画。">
+            <SearchBar value={search} onChange={setSearch} />
           </Section>
         </div>
 
