@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useMemo } from "react";
 import dynamic from "next/dynamic";
+import Image from "next/image";
 import { Entry, Emotion, EMOTION_COLORS } from "../types";
 import { createClient } from "@/lib/supabase/client";
 import { logout } from "../auth/actions";
@@ -507,7 +508,7 @@ export default function HomeClient({ initialEntries, userEmail, isAdmin }: HomeC
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl overflow-hidden flex-shrink-0">
                 <div className="icon-anim w-9 h-9">
-                  <img src="/icon-nagi.png" alt="Nagi" className="w-9 h-9 block" />
+                  <Image src="/icon-nagi.png" alt="Nagi" width={36} height={36} className="w-9 h-9 block" />
                 </div>
               </div>
               <div>
@@ -1179,7 +1180,7 @@ export default function HomeClient({ initialEntries, userEmail, isAdmin }: HomeC
             style={{ backgroundColor: "var(--bg)" }}
           >
             <div className="w-14 h-14 mb-6 rounded-2xl overflow-hidden">
-              <img src="/icon-nagi.png" alt="Nagi" className="w-14 h-14 block" />
+              <Image src="/icon-nagi.png" alt="Nagi" width={56} height={56} className="w-14 h-14 block" />
             </div>
             <RadixDialog.Title className="text-sm tracking-widest mb-5"
               style={{ color: "var(--text-muted)" }}>凪へ ようこそ</RadixDialog.Title>

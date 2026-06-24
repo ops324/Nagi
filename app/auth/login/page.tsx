@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 
@@ -54,7 +55,7 @@ export default function LoginPage() {
         <div className="text-center mb-10">
           <div className="flex items-center justify-center gap-3">
             <div className="w-12 h-12 rounded-2xl overflow-hidden">
-              <img src="/icon-nagi.png" alt="Nagi" className="w-12 h-12 block" />
+              <Image src="/icon-nagi.png" alt="Nagi" width={48} height={48} className="w-12 h-12 block" />
             </div>
             <h1 className="text-4xl font-extralight tracking-[0.3em]" style={{ color: "var(--text-secondary)" }}>凪</h1>
           </div>
