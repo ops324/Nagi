@@ -4,6 +4,7 @@ import { useState } from "react";
 import EntryCard from "@/app/components/EntryCard";
 import Welcome from "@/app/components/Welcome";
 import AccountMenu from "@/app/components/AccountMenu";
+import EmotionFilter from "@/app/components/EmotionFilter";
 import TabBar from "@/app/components/ui/TabBar";
 import SearchBar from "@/app/components/ui/SearchBar";
 import { EMOTION_COLORS } from "@/app/types";
@@ -113,6 +114,7 @@ export default function PreviewPage() {
   const [welcomeOpen, setWelcomeOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
   const [search, setSearch] = useState("");
+  const [filterKey, setFilterKey] = useState<string | null>(null);
   const [toastOn, setToastOn] = useState(false);
   const [favorites, setFavorites] = useState<Set<string>>(
     new Set(SAMPLE_ENTRIES.filter((e) => e.isFavorited).map((e) => e.id))
@@ -356,6 +358,11 @@ export default function PreviewPage() {
           {/* 8. 検索バー（記録一覧の全文検索・ホーム本体と同一コンポーネント） */}
           <Section title="検索バー" caption="記録一覧の全文検索。入力するとクリアボタン（×）が現れる。ホーム本体と同じ SearchBar を描画。">
             <SearchBar value={search} onChange={setSearch} />
+          </Section>
+
+          {/* 9. 感情フィルター（横スクロールのチップ群・ホーム本体と同一コンポーネント） */}
+          <Section title="感情フィルター" caption="記録から導出した感情・お気に入り・深い気づきのチップ。タップで絞り込み（再タップで解除）。ホーム本体と同じ EmotionFilter を描画。">
+            <EmotionFilter entries={SAMPLE_ENTRIES} filterKey={filterKey} onChange={setFilterKey} />
           </Section>
         </div>
 

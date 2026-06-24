@@ -7,6 +7,7 @@ import { Entry, Emotion, EMOTION_COLORS } from "../types";
 import { createClient } from "@/lib/supabase/client";
 import EntryCard from "./EntryCard";
 import AccountMenu from "./AccountMenu";
+import EmotionFilter from "./EmotionFilter";
 import Welcome from "./Welcome";
 import Toast from "./ui/Toast";
 import TabBar from "./ui/TabBar";
@@ -750,74 +751,9 @@ export default function HomeClient({ initialEntries, userEmail, isAdmin }: HomeC
             )}
 
             {/* 感情フィルター（D-1） */}
-            {entries.length > 0 && (() => {
-              const availableEmotions = Array.from(
-                new Set(entries.flatMap(e => e.emotions?.map(em => em.label) ?? []))
-              );
-              const hasFavorites = entries.some(e => e.isFavorited);
-              const hasDeep = entries.some(e => e.insightLevel === "deep");
-              if (availableEmotions.length === 0 && !hasFavorites && !hasDeep) return null;
-              return (
-                <div className="overflow-x-auto pb-1 -mx-1 px-1">
-                  <div className="flex gap-2 w-max">
-                    <button
-                      onClick={() => setFilterKey(null)}
-                      className="text-xs px-3 py-1.5 rounded-full transition-all flex-shrink-0"
-                      style={{
-                        border: `1px solid ${filterKey === null ? "var(--tab-active)" : "var(--border)"}`,
-                        color: filterKey === null ? "var(--tab-active)" : "var(--text-muted)",
-                        backgroundColor: filterKey === null ? "color-mix(in srgb, var(--tab-active) 10%, transparent)" : "transparent",
-                      }}
-                    >
-                      すべて
-                    </button>
-                    {availableEmotions.map(label => (
-                      <button
-                        key={label}
-                        onClick={() => setFilterKey(filterKey === label ? null : label)}
-                        className="text-xs px-3 py-1.5 rounded-full transition-all flex-shrink-0 flex items-center gap-1.5"
-                        style={{
-                          border: `1px solid ${filterKey === label ? (EMOTION_COLORS[label] || "#6ee7b7") : "var(--border)"}`,
-                          color: filterKey === label ? (EMOTION_COLORS[label] || "#6ee7b7") : "var(--text-muted)",
-                          backgroundColor: filterKey === label ? (EMOTION_COLORS[label] || "#6ee7b7") + "18" : "transparent",
-                          opacity: filterKey !== null && filterKey !== label ? 0.5 : 1,
-                        }}
-                      >
-                        <span className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                          style={{ backgroundColor: EMOTION_COLORS[label] || "#6ee7b7" }} />
-                        {label}
-                      </button>
-                    ))}
-                    {hasFavorites && (
-                      <button
-                        onClick={() => setFilterKey(filterKey === "✦" ? null : "✦")}
-                        className="text-xs px-3 py-1.5 rounded-full transition-all flex-shrink-0"
-                        style={{
-                          border: `1px solid ${filterKey === "✦" ? "var(--tab-active)" : "var(--border)"}`,
-                          color: filterKey === "✦" ? "var(--tab-active)" : "var(--text-muted)",
-                          backgroundColor: filterKey === "✦" ? "color-mix(in srgb, var(--tab-active) 10%, transparent)" : "transparent",
-                        }}
-                      >
-                        ✦ お気に入り
-                      </button>
-                    )}
-                    {hasDeep && (
-                      <button
-                        onClick={() => setFilterKey(filterKey === "deep" ? null : "deep")}
-                        className="text-xs px-3 py-1.5 rounded-full transition-all flex-shrink-0"
-                        style={{
-                          border: `1px solid ${filterKey === "deep" ? "var(--tab-active)" : "var(--border)"}`,
-                          color: filterKey === "deep" ? "var(--tab-active)" : "var(--text-muted)",
-                          backgroundColor: filterKey === "deep" ? "color-mix(in srgb, var(--tab-active) 10%, transparent)" : "transparent",
-                        }}
-                      >
-                        深い気づき
-                      </button>
-                    )}
-                  </div>
-                </div>
-              );
-            })()}
+            {entries.length > 0 && (
+              <EmotionFilter entries={entries} filterKey={filterKey} onChange={setFilterKey} />
+            )}
 
             {/* 記録一覧 */}
             {(() => {
