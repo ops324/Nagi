@@ -37,7 +37,9 @@ export default function SearchBar({ value, onChange }: SearchBarProps) {
           onClick={() => onChange("")}
           aria-label="検索をクリア"
           className="btn-ghost absolute right-2 top-1/2 -translate-y-1/2 flex items-center justify-center w-6 h-6 rounded-full"
-          style={{ color: "var(--text-muted)" }}
+          // .btn-ghost{position:relative}（globals.css）が未レイヤーゆえ Tailwind の
+          // .absolute（@layer）に勝ってしまうため、position をインラインで明示して確実に上書きする
+          style={{ position: "absolute", color: "var(--text-muted)" }}
         >
           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2"
             strokeLinecap="round" viewBox="0 0 24 24">
