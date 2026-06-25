@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/client";
 import EntryCard from "./EntryCard";
 import InputCard from "./InputCard";
 import MemoryCard from "./MemoryCard";
+import WeeklySummaryCard from "./WeeklySummaryCard";
 import AccountMenu from "./AccountMenu";
 import EmotionFilter from "./EmotionFilter";
 import Welcome from "./Welcome";
@@ -596,43 +597,12 @@ export default function HomeClient({ initialEntries, userEmail, isAdmin }: HomeC
             <MemoryCard entries={entries} emotionGradient={emotionGradient} onNavigate={navigateToEntry} />
 
             {/* 今週の凪（A-2） */}
-            {(() => {
-              const now = new Date();
-              const weekStart = new Date(now);
-              weekStart.setDate(now.getDate() - now.getDay());
-              weekStart.setHours(0, 0, 0, 0);
-              const thisWeekCount = entries.filter(e => new Date(e.createdAt) >= weekStart).length;
-              if (thisWeekCount < 3 && !weeklySummary) return null;
-              return (
-                <div className="rounded-3xl p-[22px]"
-                  style={{ backgroundColor: "var(--bg-card)", border: "1px solid var(--border)" }}>
-                  <div className="flex items-center gap-2 mb-3">
-                    <span className="text-xs tracking-widest" style={{ color: "var(--text-muted)" }}>今週の凪</span>
-                    <div className="flex-1 h-px" style={{ backgroundColor: "var(--border-inner)" }} />
-                  </div>
-                  {weeklySummary ? (
-                    <p className="text-sm leading-relaxed"
-                      style={{
-                        color: "var(--text-secondary)",
-                        fontStyle: "italic",
-                        borderLeft: "2px solid color-mix(in srgb, var(--green) 60%, transparent)",
-                        paddingLeft: "12px",
-                      }}>
-                      {weeklySummary}
-                    </p>
-                  ) : (
-                    <button
-                      onClick={handleWeeklySummary}
-                      disabled={weeklyLoading}
-                      className="text-xs tracking-widest transition-opacity"
-                      style={{ color: "var(--text-muted)", opacity: weeklyLoading ? 0.5 : 1 }}
-                    >
-                      {weeklyLoading ? "読んでいます…" : "今週のことばを聞く"}
-                    </button>
-                  )}
-                </div>
-              );
-            })()}
+            <WeeklySummaryCard
+              entries={entries}
+              summary={weeklySummary}
+              loading={weeklyLoading}
+              onRequestSummary={handleWeeklySummary}
+            />
 
             {/* 検索バー */}
             {entries.length > 0 && (

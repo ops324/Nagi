@@ -7,6 +7,7 @@ import AccountMenu from "@/app/components/AccountMenu";
 import EmotionFilter from "@/app/components/EmotionFilter";
 import InputCard from "@/app/components/InputCard";
 import MemoryCard from "@/app/components/MemoryCard";
+import WeeklySummaryCard from "@/app/components/WeeklySummaryCard";
 import TabBar from "@/app/components/ui/TabBar";
 import SearchBar from "@/app/components/ui/SearchBar";
 import { EMOTION_COLORS } from "@/app/types";
@@ -401,6 +402,16 @@ export default function PreviewPage() {
           {/* 11. あの日の凪（過去の同じ日の記録・ホーム本体と同一コンポーネント） */}
           <Section title="あの日の凪" caption="1年前／半年前／ひと月前の同じ日に記録があればカード表示（破線枠）。ホーム本体と同じ MemoryCard を描画（ラボではマウント後に1ヶ月前のサンプルを表示）。">
             <MemoryCard entries={memorySample} emotionGradient={emotionGradient} onNavigate={() => {}} />
+          </Section>
+
+          {/* 12. 今週の凪（週次サマリー・ホーム本体と同一コンポーネント） */}
+          <Section title="今週の凪" caption="今週の記録が3件以上で出現。未生成時は「今週のことばを聞く」ボタン、生成後はサマリー本文（緑の左罫線）。ホーム本体と同じ WeeklySummaryCard を描画（ラボはサマリー表示状態）。">
+            <WeeklySummaryCard
+              entries={[]}
+              summary="今週のあなたは、静かな揺らぎの中で小さな手応えを重ねていたようです。何度か立ち止まりながらも、そのつど自分の感覚に言葉を与えていました。"
+              loading={false}
+              onRequestSummary={() => {}}
+            />
           </Section>
         </div>
 
