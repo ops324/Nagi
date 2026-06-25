@@ -5,7 +5,7 @@ import dynamic from "next/dynamic";
 import Image from "next/image";
 import { Entry, Emotion, EMOTION_COLORS } from "../types";
 import { createClient } from "@/lib/supabase/client";
-import EntryCard from "./EntryCard";
+import EntryList from "./EntryList";
 import InputCard from "./InputCard";
 import MemoryCard from "./MemoryCard";
 import WeeklySummaryCard from "./WeeklySummaryCard";
@@ -15,8 +15,6 @@ import Welcome from "./Welcome";
 import Toast from "./ui/Toast";
 import TabBar from "./ui/TabBar";
 import SearchBar from "./ui/SearchBar";
-import { spawnRipple } from "../lib/ripple";
-import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 
 const LOADING_QUESTIONS: Record<"negative" | "positive" | "neutral", string[]> = {
   negative: [
@@ -615,222 +613,33 @@ export default function HomeClient({ initialEntries, userEmail, isAdmin }: HomeC
             )}
 
             {/* 記録一覧 */}
-            {(() => {
-              const q = searchQuery.trim().toLowerCase();
-              const filteredEntries = entries
-                .filter(e =>
-                  filterKey === null ? true
-                  : filterKey === "✦" ? e.isFavorited
-                  : filterKey === "deep" ? e.insightLevel === "deep"
-                  : e.emotions?.some(em => em.label === filterKey)
-                )
-                .filter(e =>
-                  q === "" ? true
-                  : (e.content?.toLowerCase().includes(q) ||
-                     e.comment?.toLowerCase().includes(q) ||
-                     e.note?.toLowerCase().includes(q))
-                );
-              return filteredEntries.length > 0 ? (
-              <div className="space-y-4">
-                {filteredEntries.map((entry, entryIndex) => {
-                  // 編集モード: EntryCard の代わりにインライン編集UIを表示
-                  if (editingId === entry.id) {
-                    return (
-                      <div
-                        key={entry.id}
-                        id={`entry-${entry.id}`}
-                        className="rounded-3xl p-[27px] space-y-4"
-                        style={{ backgroundColor: "var(--bg-card)", border: "1px solid var(--border)" }}
-                      >
-                        {editSaving ? (
-                          <div className="h-32 flex flex-col items-center justify-center gap-4">
-                            <div className="relative w-12 h-12 flex items-center justify-center flex-shrink-0">
-                              <div className="loading-ring" style={{ animationDelay: "0s" }} />
-                              <div className="loading-ring" style={{ animationDelay: "0.87s" }} />
-                              <div className="loading-ring" style={{ animationDelay: "1.73s" }} />
-                              <div className="w-2 h-2 rounded-full flex-shrink-0"
-                                style={{ backgroundColor: "var(--green)", opacity: 0.7 }} />
-                            </div>
-                            <p className="text-xs tracking-widest" style={{ color: "var(--text-muted)" }}>
-                              凪が読みなおしています
-                            </p>
-                          </div>
-                        ) : (
-                          <div className="space-y-3">
-                            <textarea
-                              value={editingText}
-                              onChange={(e) => setEditingText(e.target.value)}
-                              maxLength={5000}
-                              autoFocus
-                              rows={6}
-                              className="w-full text-sm resize-none outline-none leading-relaxed rounded-2xl p-3"
-                              style={{
-                                color: "var(--text-primary)",
-                                backgroundColor: "var(--bg)",
-                                border: "1px solid var(--border)",
-                              }}
-                              aria-label="記録を編集"
-                            />
-                            {editError && <p className="text-xs" style={{ color: "#fca5a5" }}>{editError}</p>}
-                            <div className="flex flex-col gap-1.5">
-                              <button
-                                type="button"
-                                role="switch"
-                                aria-checked={regenerateOnEdit}
-                                onClick={() => setRegenerateOnEdit((v) => !v)}
-                                className="flex items-center gap-2.5 text-xs"
-                                style={{ color: "var(--text-secondary)", background: "none", border: "none", cursor: "pointer" }}
-                              >
-                                <span
-                                  aria-hidden="true"
-                                  style={{
-                                    width: "34px",
-                                    height: "20px",
-                                    borderRadius: "9999px",
-                                    padding: "2px",
-                                    backgroundColor: regenerateOnEdit ? "var(--green)" : "var(--bg-disabled)",
-                                    display: "flex",
-                                    justifyContent: regenerateOnEdit ? "flex-end" : "flex-start",
-                                    transition: "background-color 0.2s ease",
-                                    flexShrink: 0,
-                                  }}
-                                >
-                                  <span style={{ width: "16px", height: "16px", borderRadius: "50%", backgroundColor: "#fff" }} />
-                                </span>
-                                凪に読みなおしてもらう
-                              </button>
-                              <p className="text-xs" style={{ color: "var(--text-muted)" }}>
-                                {regenerateOnEdit
-                                  ? "凪のことばは、読みなおすと新しくなります"
-                                  : "凪のことばは、そのまま残ります"}
-                              </p>
-                            </div>
-                            <div className="flex justify-end gap-2">
-                              <button
-                                onClick={handleEditCancel}
-                                className="text-xs tracking-widest px-4 py-2 rounded-full"
-                                style={{ color: "var(--text-muted)", border: "1px solid var(--border)" }}
-                              >
-                                やめる
-                              </button>
-                              {(() => {
-                                const disabled = !editingText.trim()
-                                  || editingText.trim() === entry.content.trim();
-                                return (
-                                  <button
-                                    onClick={() => handleEditSave(entry.id)}
-                                    onPointerDown={spawnRipple}
-                                    disabled={disabled}
-                                    className="btn-primary text-xs tracking-widest px-5 py-2 rounded-full"
-                                    style={{
-                                      backgroundColor: disabled ? "var(--bg-disabled)" : "var(--green)",
-                                      color:           disabled ? "var(--text-disabled)" : "var(--color-btn-text)",
-                                      cursor:          disabled ? "not-allowed" : "pointer",
-                                    }}
-                                  >
-                                    保存する
-                                  </button>
-                                );
-                              })()}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  }
-
-                  // 通常モード: EntryCard コンポーネント
-                  return (
-                    <EntryCard
-                      key={entry.id}
-                      domId={`entry-${entry.id}`}
-                      entry={{ ...entry, note: notes[entry.id] ?? entry.note ?? "" }}
-                      emotionGradient={emotionGradient}
-                      EMOTION_COLORS={EMOTION_COLORS}
-                      onToggleFavorite={handleToggleFavorite}
-                      onNoteChange={handleNoteChange}
-                      noteSaved={savedNoteIds.has(entry.id)}
-                      highlighted={highlightedEntryId === entry.id}
-                      isNew={newEntryId === entry.id}
-                      index={entryIndex}
-                      menuSlot={
-                        deletingId === entry.id ? (
-                          <div className="flex items-center gap-2" role="group" aria-live="polite" aria-label="削除確認">
-                            <button
-                              onClick={() => handleDelete(entry.id)}
-                              className="text-xs tracking-widest px-4 py-2 rounded-full transition-colors"
-                              style={{ backgroundColor: "#fca5a530", color: "#ef4444", border: "1px solid #fca5a5" }}
-                            >
-                              削除する
-                            </button>
-                            <button
-                              onClick={() => setDeletingId(null)}
-                              className="text-xs tracking-widest px-4 py-2 rounded-full"
-                              style={{ color: "var(--text-muted)", border: "1px solid var(--border)" }}
-                            >
-                              やめる
-                            </button>
-                          </div>
-                        ) : (
-                          <DropdownMenu.Root>
-                            <DropdownMenu.Trigger asChild>
-                              <button
-                                className="btn-ghost flex items-center justify-center w-11 h-11 -mr-2 rounded-full"
-                                style={{ color: "var(--text-muted)" }}
-                                aria-label="この記録のメニュー"
-                              >
-                                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                                  <circle cx="3" cy="8" r="1.5" />
-                                  <circle cx="8" cy="8" r="1.5" />
-                                  <circle cx="13" cy="8" r="1.5" />
-                                </svg>
-                              </button>
-                            </DropdownMenu.Trigger>
-                            <DropdownMenu.Portal>
-                              <DropdownMenu.Content
-                                align="end"
-                                sideOffset={4}
-                                className="z-30 rounded-2xl overflow-hidden"
-                                style={{ backgroundColor: "var(--bg-card)", border: "1px solid var(--border)", minWidth: "120px", boxShadow: "var(--shadow-3)" }}
-                              >
-                                <DropdownMenu.Item
-                                  onSelect={() => handleEditStart(entry)}
-                                  className="min-h-[44px] px-5 flex items-center text-xs tracking-widest cursor-pointer outline-none transition-colors hover:bg-[var(--state-hover)] data-[highlighted]:bg-[var(--state-hover)]"
-                                  style={{ color: "var(--text-secondary)" }}
-                                >
-                                  編集する
-                                </DropdownMenu.Item>
-                                <DropdownMenu.Separator className="h-px" style={{ backgroundColor: "var(--border)" }} />
-                                <DropdownMenu.Item
-                                  onSelect={() => setDeletingId(entry.id)}
-                                  className="min-h-[44px] px-5 flex items-center text-xs tracking-widest cursor-pointer outline-none transition-colors hover:bg-[var(--state-hover)] data-[highlighted]:bg-[var(--state-hover)]"
-                                  style={{ color: "#ef4444" }}
-                                >
-                                  削除する
-                                </DropdownMenu.Item>
-                              </DropdownMenu.Content>
-                            </DropdownMenu.Portal>
-                          </DropdownMenu.Root>
-                        )
-                      }
-                    />
-                  );
-                })}
-              </div>
-            ) : (
-              !loading && (
-                filterKey !== null || searchQuery ? (
-                  <div className="text-center py-12">
-                    <p className="text-sm" style={{ color: "var(--text-subtle)" }}>該当する記録はありません</p>
-                  </div>
-                ) : (
-                  <div className="text-center py-12">
-                    <p className="text-sm" style={{ color: "var(--text-subtle)" }}>まだ記録がありません</p>
-                  </div>
-                )
-              )
-            );
-            })()}
+            <EntryList
+              entries={entries}
+              searchQuery={searchQuery}
+              filterKey={filterKey}
+              loading={loading}
+              emotionGradient={emotionGradient}
+              notes={notes}
+              savedNoteIds={savedNoteIds}
+              highlightedEntryId={highlightedEntryId}
+              newEntryId={newEntryId}
+              onToggleFavorite={handleToggleFavorite}
+              onNoteChange={handleNoteChange}
+              editingId={editingId}
+              editingText={editingText}
+              editSaving={editSaving}
+              editError={editError}
+              regenerateOnEdit={regenerateOnEdit}
+              onEditTextChange={setEditingText}
+              onRegenerateToggle={() => setRegenerateOnEdit((v) => !v)}
+              onEditStart={handleEditStart}
+              onEditCancel={handleEditCancel}
+              onEditSave={handleEditSave}
+              deletingId={deletingId}
+              onDeleteRequest={setDeletingId}
+              onDeleteCancel={() => setDeletingId(null)}
+              onDelete={handleDelete}
+            />
           </div>
         )}
 
