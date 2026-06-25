@@ -7,6 +7,7 @@ import { Entry, Emotion, EMOTION_COLORS } from "../types";
 import { createClient } from "@/lib/supabase/client";
 import EntryCard from "./EntryCard";
 import InputCard from "./InputCard";
+import MemoryCard from "./MemoryCard";
 import AccountMenu from "./AccountMenu";
 import EmotionFilter from "./EmotionFilter";
 import Welcome from "./Welcome";
@@ -291,27 +292,6 @@ export default function HomeClient({ initialEntries, userEmail, isAdmin }: HomeC
       setEntries(prev => prev.map(e => e.id === id ? { ...e, isFavorited: !next } : e));
       showErrorToast("お気に入りの更新に失敗しました");
     }
-  };
-
-  const getMemoryEntry = (): { entry: Entry; label: string } | null => {
-    const now = new Date();
-    const targets = [
-      { months: 12, label: "1年前の今日" },
-      { months: 6,  label: "半年前の今日" },
-      { months: 1,  label: "ひと月前の今日" },
-    ];
-    for (const { months, label } of targets) {
-      const target = new Date(now);
-      target.setMonth(target.getMonth() - months);
-      const found = entries.find(e => {
-        const d = new Date(e.createdAt);
-        return d.getFullYear() === target.getFullYear()
-            && d.getMonth()    === target.getMonth()
-            && d.getDate()     === target.getDate();
-      });
-      if (found) return { entry: found, label };
-    }
-    return null;
   };
 
   const handleWeeklySummary = async () => {
@@ -613,37 +593,7 @@ export default function HomeClient({ initialEntries, userEmail, isAdmin }: HomeC
             />
 
             {/* あの日の凪（A-1） */}
-            {(() => {
-              const memory = getMemoryEntry();
-              if (!memory) return null;
-              return (
-                <button
-                  onClick={() => navigateToEntry(memory.entry)}
-                  className="w-full text-left rounded-3xl p-[22px] transition-opacity"
-                  style={{
-                    backgroundColor: "var(--bg-card)",
-                    border: "1px dashed var(--border)",
-                    opacity: 0.75,
-                  }}
-                  aria-label={`${memory.label}の記録を見る`}
-                >
-                  <p className="text-xs tracking-widest mb-3" style={{ color: "var(--text-faint)" }}>{memory.label}</p>
-                  {memory.entry.emotions?.length > 0 && (
-                    <div className="h-px rounded-full w-full mb-3"
-                      style={{ background: emotionGradient(memory.entry.emotions) }} />
-                  )}
-                  <p className="text-sm leading-relaxed overflow-hidden"
-                    style={{
-                      color: "var(--text-muted)",
-                      display: "-webkit-box",
-                      WebkitLineClamp: 3,
-                      WebkitBoxOrient: "vertical",
-                    }}>
-                    {memory.entry.content}
-                  </p>
-                </button>
-              );
-            })()}
+            <MemoryCard entries={entries} emotionGradient={emotionGradient} onNavigate={navigateToEntry} />
 
             {/* 今週の凪（A-2） */}
             {(() => {

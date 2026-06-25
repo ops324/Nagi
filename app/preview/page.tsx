@@ -6,6 +6,7 @@ import Welcome from "@/app/components/Welcome";
 import AccountMenu from "@/app/components/AccountMenu";
 import EmotionFilter from "@/app/components/EmotionFilter";
 import InputCard from "@/app/components/InputCard";
+import MemoryCard from "@/app/components/MemoryCard";
 import TabBar from "@/app/components/ui/TabBar";
 import SearchBar from "@/app/components/ui/SearchBar";
 import { EMOTION_COLORS } from "@/app/types";
@@ -116,6 +117,22 @@ export default function PreviewPage() {
   const [accountOpen, setAccountOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [inputContent, setInputContent] = useState("");
+  // あの日の凪は「今日−Nヶ月」一致が必要。lazy init で1ヶ月前のサンプルを生成。
+  // MemoryCard は時刻を表示しない（ラベル＋本文＋グラデのみ）ため SSR/client で同一描画＝ハイドレーション安全。
+  const [memorySample] = useState<Entry[]>(() => {
+    const d = new Date();
+    d.setMonth(d.getMonth() - 1);
+    return [{
+      id: "memory-sample",
+      content: "ひと月前の自分は、こんなことを書いていました。あの日の感覚を、今あらためて眺めてみる。",
+      comment: "",
+      emotions: [{ label: "穏やか", score: 0.6 }, { label: "希望", score: 0.4 }],
+      dominant: "穏やか",
+      energy: 5,
+      createdAt: d.toISOString(),
+      insightLevel: "moderate",
+    }];
+  });
   const [filterKey, setFilterKey] = useState<string | null>(null);
   const [toastOn, setToastOn] = useState(false);
   const [favorites, setFavorites] = useState<Set<string>>(
@@ -379,6 +396,11 @@ export default function PreviewPage() {
               onKeyDown={() => {}}
               onSubmit={() => {}}
             />
+          </Section>
+
+          {/* 11. あの日の凪（過去の同じ日の記録・ホーム本体と同一コンポーネント） */}
+          <Section title="あの日の凪" caption="1年前／半年前／ひと月前の同じ日に記録があればカード表示（破線枠）。ホーム本体と同じ MemoryCard を描画（ラボではマウント後に1ヶ月前のサンプルを表示）。">
+            <MemoryCard entries={memorySample} emotionGradient={emotionGradient} onNavigate={() => {}} />
           </Section>
         </div>
 
