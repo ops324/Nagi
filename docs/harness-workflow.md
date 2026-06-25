@@ -1,7 +1,7 @@
 # Nagi ハーネスワークフロー
 
-最終更新: 2026-05-10
-バージョン: v1.1.0
+最終更新: 2026-06-25
+バージョン: v1.2.0
 
 ## 1. ハーネスの目的
 
@@ -35,8 +35,10 @@
   ↓ 7. Claude Code へ投入(必要に応じて新セッション)
 [Claude Code]
   ↓ 8. バックアップブランチ作成(CC-5)
-  ↓ 9. 実装
+  ↓ 8.5 着手時ゲート宣言(FF-1〜FF-5: スパゲッティ・セキュリティを設計時に防ぐ)
+  ↓ 9. 実装(応答終了ごとに Stop hook が eslint+tsc を自動実行)
   ↓ 10. ビルド・動作確認(CC-3, CC-4, CC-6)
+  ↓ 10.5 PR 前の重い検証とレビュー(CC-9: build/test/e2e・/review・該当時 /security-review)
   ↓ 11. PR 作成・Vercel Preview 成功確認(CC-8)
   ↓ 12. 報告書作成 ← PR URL・検証チェックリスト含む(CC-7, CC-8)
   ↓ 13. 滝本さんへ提示
@@ -100,6 +102,19 @@ Claude Code 起動時に自動ロードされる。
 | CC-6 | console.log 等の確認指示は実ランタイム確認を実施し結果報告 |
 | CC-7 | ファイル更新時は差分サマリーを報告(バージョン番号だけは不可) |
 | CC-8 | コミット・PR・マージ・デプロイは規定フローで実施(main 直接 push 禁止) |
+| CC-9 | PR 前に重い検証(build/test/e2e)と `/review`(該当時 `/security-review`)を必ず通す |
+
+## 5.5 着手時ゲート(FF: feature-flow)
+
+スパゲッティコード(重複実装・コンポーネント肥大化・規約逸脱)は機械では検出
+できないため、新機能・デザイン着手の**冒頭**で `.claude/rules/feature-flow.md` の
+FF-1〜FF-5 を宣言してから実装に入る。三層ガードの「設計時」層を担う。
+
+| 層 | 担い手 | タイミング |
+|---|---|---|
+| 設計時(FF-1〜5) | 着手時の宣言 | 実装前 |
+| 機械(軽段) | Stop hook `eslint`+`tsc --noEmit` | 応答終了ごと自動 |
+| 機械(重段)+レビュー(CC-9) | build/test/e2e・/review | PR 前に 1 回 |
 
 ## 6. ハーネス自体の改訂ルール
 
@@ -118,12 +133,15 @@ Claude Code 起動時に自動ロードされる。
 |---|---|---|
 | v1.0.0 | 2026-04-26 | 初版作成。22-1〜22-6、CC-1〜CC-7 を集約 |
 | v1.1.0 | 2026-05-10 | CC-8 追加。標準フローにデプロイ手順(PR作成・Vercel確認・マージ・本番確認)を組み込み。main 直接 push 禁止を明文化 |
+| v1.2.0 | 2026-06-25 | 三層ガード導入。CC-9(PR前の重い検証+レビュー必須)追加。着手時ゲート FF(`.claude/rules/feature-flow.md`)新設(スパゲッティ防止が主軸)。Stop hook(`eslint`+`tsc --noEmit`)を `.claude/settings.json` に追加(毎ターン自動)。`package.json` に `typecheck` スクリプト追加 |
 
 ---
 
 ## 関連ドキュメント
 
-- `.claude/rules/harness.md` - Claude Code 側運用ルール詳細
+- `.claude/rules/harness.md` - Claude Code 側運用ルール詳細(CC-1〜CC-9)
+- `.claude/rules/feature-flow.md` - 着手時ゲート(FF-1〜FF-5: スパゲッティ防止)
+- `.claude/settings.json` - Stop hook(eslint+tsc 自動実行)定義
 - `docs/仕様書.md` - Nagi アプリ全体仕様
 - `.claude/rules/security.md` - セキュリティ規約
 - `.claude/rules/architecture.md` - アーキテクチャ規約
