@@ -8,6 +8,7 @@ import EmotionFilter from "@/app/components/EmotionFilter";
 import InputCard from "@/app/components/InputCard";
 import MemoryCard from "@/app/components/MemoryCard";
 import WeeklySummaryCard from "@/app/components/WeeklySummaryCard";
+import EntryList from "@/app/components/EntryList";
 import TabBar from "@/app/components/ui/TabBar";
 import SearchBar from "@/app/components/ui/SearchBar";
 import { EMOTION_COLORS } from "@/app/types";
@@ -411,6 +412,37 @@ export default function PreviewPage() {
               summary="今週のあなたは、静かな揺らぎの中で小さな手応えを重ねていたようです。何度か立ち止まりながらも、そのつど自分の感覚に言葉を与えていました。"
               loading={false}
               onRequestSummary={() => {}}
+            />
+          </Section>
+
+          {/* 13. 記録一覧＋インライン編集（ホーム本体と同一コンポーネント） */}
+          <Section title="記録一覧" caption="検索・感情フィルターで絞り込んだ記録の一覧。⋯メニューから編集・削除、お気に入りトグルや余韻メモも。ホーム本体と同じ EntryList を描画（ラボでは編集・削除は無効）。">
+            <EntryList
+              entries={SAMPLE_ENTRIES.map((e) => ({ ...e, isFavorited: favorites.has(e.id) }))}
+              searchQuery={search}
+              filterKey={filterKey}
+              loading={false}
+              emotionGradient={emotionGradient}
+              notes={{}}
+              savedNoteIds={new Set()}
+              highlightedEntryId={null}
+              newEntryId={null}
+              onToggleFavorite={toggleFavorite}
+              onNoteChange={(id, value) => console.log("note:", id, value)}
+              editingId={null}
+              editingText=""
+              editSaving={false}
+              editError=""
+              regenerateOnEdit={true}
+              onEditTextChange={() => {}}
+              onRegenerateToggle={() => {}}
+              onEditStart={() => {}}
+              onEditCancel={() => {}}
+              onEditSave={() => {}}
+              deletingId={null}
+              onDeleteRequest={() => {}}
+              onDeleteCancel={() => {}}
+              onDelete={() => {}}
             />
           </Section>
         </div>
