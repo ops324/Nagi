@@ -13,6 +13,7 @@ import TabBar from "@/app/components/ui/TabBar";
 import SearchBar from "@/app/components/ui/SearchBar";
 import { EMOTION_COLORS } from "@/app/types";
 import type { Entry } from "@/app/types";
+import { buildMoodSeed } from "@/lib/mood-seed";
 
 // 感情グラデーション生成（page.tsx と同じロジック）
 function emotionGradient(emotions: Entry["emotions"]): string {
@@ -387,7 +388,7 @@ export default function PreviewPage() {
           </Section>
 
           {/* 10. 入力カード（今日の記録・ホーム本体と同一コンポーネント） */}
-          <Section title="入力カード" caption="今日の記録の入力欄＋「記録する」ボタン（未入力時は非活性）。ホーム本体と同じ InputCard を描画（送信はラボでは無効）。">
+          <Section title="入力カード" caption="今日の記録の入力欄＋「記録する」ボタン（未入力時は非活性）。空のとき下部に「気持ちから選ぶ」入口を表示し、タップで感情オーブ（最小入力）が展開。オーブを選ぶと種文が入力欄へ充填される。ホーム本体と同じ InputCard を描画（送信はラボでは無効）。">
             <InputCard
               content={inputContent}
               loading={false}
@@ -397,6 +398,7 @@ export default function PreviewPage() {
               onContentChange={setInputContent}
               onKeyDown={() => {}}
               onSubmit={() => {}}
+              onMoodSelect={(label) => setInputContent(buildMoodSeed(label))}
             />
           </Section>
 
