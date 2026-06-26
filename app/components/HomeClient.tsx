@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import Image from "next/image";
 import { Entry, Emotion, EMOTION_COLORS } from "../types";
 import { createClient } from "@/lib/supabase/client";
+import { buildMoodSeed } from "@/lib/mood-seed";
 import EntryList from "./EntryList";
 import InputCard from "./InputCard";
 import MemoryCard from "./MemoryCard";
@@ -278,6 +279,12 @@ export default function HomeClient({ initialEntries, userEmail, isAdmin }: HomeC
       e.preventDefault();
       if (content.trim() && !loading) handleSubmit();
     }
+  };
+
+  // 最小入力（感情オーブ）：選んだ気持ちの種文を入力欄へ充填する。
+  // 送信は従来どおりユーザーが「記録する」で確定（handleSubmit は不変）。
+  const handleMoodSelect = (label: string) => {
+    handleContentChange(buildMoodSeed(label));
   };
 
   const handleToggleFavorite = async (id: string) => {
@@ -589,6 +596,7 @@ export default function HomeClient({ initialEntries, userEmail, isAdmin }: HomeC
               onContentChange={handleContentChange}
               onKeyDown={handleKeyDown}
               onSubmit={handleSubmit}
+              onMoodSelect={handleMoodSelect}
             />
 
             {/* あの日の凪（A-1） */}

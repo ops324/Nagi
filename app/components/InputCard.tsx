@@ -1,6 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import { spawnRipple } from "../lib/ripple";
+import MoodOrbPicker from "./MoodOrbPicker";
 
 const PHASE_LABELS = ["読んでいます", "感じています", "ことばを選んでいます"] as const;
 
@@ -21,6 +23,8 @@ export interface InputCardProps {
   onKeyDown: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
   /** 「記録する」押下 */
   onSubmit: () => void;
+  /** 感情オーブ選択時（最小入力：種文を content へ充填）。未指定なら入口を出さない */
+  onMoodSelect?: (label: string) => void;
 }
 
 /**
@@ -38,7 +42,19 @@ export default function InputCard({
   onContentChange,
   onKeyDown,
   onSubmit,
+  onMoodSelect,
 }: InputCardProps) {
+  // 感情オーブの展開フラグ（UI ローカル状態のみ）
+  const [showMoodPicker, setShowMoodPicker] = useState(false);
+  const isEmpty = content.trim() === "";
+  // 最小入力の入口を出す条件：onMoodSelect が渡され、入力欄が空のときだけ
+  const canPickMood = !!onMoodSelect && isEmpty;
+
+  const handlePick = (label: string) => {
+    onMoodSelect?.(label);
+    setShowMoodPicker(false);
+  };
+
   return (
     <div className="input-card rounded-3xl p-[27px]"
       style={{ backgroundColor: "var(--bg-card)", border: "1px solid var(--border)", boxShadow: "var(--shadow-1)" }}>
@@ -79,6 +95,13 @@ export default function InputCard({
         />
       )}
 
+      {/* 感情オーブ（最小入力・段階的開示）。入力欄は圧迫せず、入口タップ時だけ展開 */}
+      {!loading && canPickMood && showMoodPicker && (
+        <div className="dialog-pop mt-5">
+          <MoodOrbPicker onSelect={handlePick} />
+        </div>
+      )}
+
       {/* 問いかけ（ローディング中のみ） */}
       {loadingQuestion && (
         <p key={loadingQuestion}
@@ -91,9 +114,25 @@ export default function InputCard({
       {error && <p className="text-xs mt-2" style={{ color: "#fca5a5" }}>{error}</p>}
       {!loading && (
         <div className="flex items-center justify-between mt-4">
-          <span className="text-xs" style={{ color: "var(--text-muted)" }}>
-            {content.length > 4800 ? `${content.length} / 5000` : ""}
-          </span>
+          {canPickMood ? (
+            <button
+              onClick={() => setShowMoodPicker(v => !v)}
+              aria-expanded={showMoodPicker}
+              className="inline-flex items-center gap-2 text-xs rounded-full px-3.5 py-2 transition-colors"
+              style={{
+                color: "var(--text-muted)",
+                backgroundColor: "var(--bg)",
+                border: "1px solid var(--border)",
+              }}
+            >
+              <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: "var(--green)" }} />
+              気持ちから選ぶ
+            </button>
+          ) : (
+            <span className="text-xs" style={{ color: "var(--text-muted)" }}>
+              {content.length > 4800 ? `${content.length} / 5000` : ""}
+            </span>
+          )}
           <button
             onClick={onSubmit}
             onPointerDown={spawnRipple}
