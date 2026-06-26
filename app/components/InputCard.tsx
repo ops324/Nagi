@@ -126,7 +126,7 @@ export default function InputCard({
               }}
             >
               <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: "var(--green)" }} />
-              気持ちから選ぶ
+              {showMoodPicker ? "そっと閉じる" : "気持ちから選ぶ"}
             </button>
           ) : (
             <span className="text-xs" style={{ color: "var(--text-muted)" }}>
