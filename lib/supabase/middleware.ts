@@ -33,7 +33,8 @@ export async function updateSession(request: NextRequest) {
 
   // 公開ページ・コールバックは通過
   // /try（登録前のお試し体験）と /api/comment/demo は未認証で利用するため公開扱い
-  const publicPaths = ["/privacy", "/terms", "/auth/callback", "/try", "/api/comment/demo"];
+  // /api/health は keep-warm の ping 用（未認証で 200 を返しリダイレクトさせない）
+  const publicPaths = ["/privacy", "/terms", "/auth/callback", "/try", "/api/comment/demo", "/api/health"];
   if (publicPaths.some((p) => pathname.startsWith(p))) {
     return supabaseResponse;
   }
