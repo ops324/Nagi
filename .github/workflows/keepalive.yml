@@ -1,0 +1,26 @@
+name: keepalive
+
+# GitHub は public リポジトリの schedule(cron) ワークフローを「リポジトリ活動（コミット）が
+# 60日ない」場合に自動無効化する。放置すると keep-warm.yml が止まり、その先で Supabase も
+# 停止する連鎖になる。月次で main に空コミットを打ち、リポジトリ活動タイマーをリセットして
+# keep-warm.yml を生かし続ける自己完結ワークフロー。
+# [skip ci] を付けて ci.yml を誘発しない。workflow_dispatch で手動実行も可能。
+on:
+  schedule:
+    - cron: "0 3 1 * *" # 毎月1日 03:00 UTC（60日に対し約30日周期＝2倍の余裕）
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  keepalive:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: empty commit to reset activity timer
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit --allow-empty -m "chore: keepalive [skip ci]"
+          git push
