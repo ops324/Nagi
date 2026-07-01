@@ -16,3 +16,14 @@ jobs:
         run: |
           curl -fsS -o /dev/null -w "health %{http_code} ttfb:%{time_starttransfer}s\n" https://nagi-xi.vercel.app/api/health || true
           curl -fsS -o /dev/null -w "edge   %{http_code} ttfb:%{time_starttransfer}s\n" https://nagi-xi.vercel.app/ || true
+      # Supabase 無料プランは「DB アクティビティ」が7日途切れると一時停止される。
+      # 上の / ping は未認証だと middleware の getClaims()（Auth のみ）を通り /auth/login へ
+      # リダイレクトされるだけで、entries/profiles への実 DB クエリは走らない。
+      # ここで anon key を使い REST に select limit 1 を投げる（RLS で結果は空だが Postgres 上で
+      # クエリが実行される＝DB アクティビティ）。5分ごとなので日次の維持要件を大きく上回る。
+      - name: keep supabase db active
+        run: |
+          curl -fsS -o /dev/null -w "supabase %{http_code}\n" \
+            "https://ahrppujhrfvwimfmropx.supabase.co/rest/v1/entries?select=id&limit=1" \
+            -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" || true
