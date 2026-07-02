@@ -8,11 +8,13 @@
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase接続URL | 全クライアント |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase Publishable key | 全クライアント（RLS適用） |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase Secret key（管理者操作） | サーバーのみ |
+| `CRON_SECRET` | Vercel Cron 認可（`Authorization: Bearer` を照合） | サーバーのみ |
 
 ### ルール
 
 - `.env.local` は `.gitignore` で Git 管理外
 - `ANTHROPIC_API_KEY` は `app/api/` のAPIルートのみ使用
+- `CRON_SECRET` は `app/api/cron/*` のみで参照（Vercel が自動付与する `Authorization: Bearer <CRON_SECRET>` と照合。未設定/不一致は 401。`/api/cron` は `publicPaths` で認証 middleware を素通りするため、この照合がエンドポイントの唯一のセキュリティ境界）
 - `SUPABASE_SERVICE_ROLE_KEY` は `NEXT_PUBLIC_` プレフィックスを付けない
 - `SUPABASE_SERVICE_ROLE_KEY`（`createAdminClient`）の使用は次の2箇所に限定する：
   - `app/api/account/delete/route.ts`（アカウント削除：entries/profiles/auth ユーザー削除）
