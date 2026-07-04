@@ -20,6 +20,19 @@ export default defineConfig({
   use: {
     baseURL: "http://localhost:3000",
     trace: "on-first-retry",
+    // VRT の決定性のためビューポートを固定（既定 Desktop Chrome は 1280x720）。
+    viewport: { width: 1280, height: 800 },
+  },
+  // ビジュアル回帰テスト（visual.spec.ts）の既定。
+  // - animations: CSS アニメ／トランジションを凍結（globals.css の無限アニメ対策）
+  // - maxDiffPixelRatio: OS/エミュレーション差によるアンチエイリアスの微差を吸収しつつ
+  //   レイアウト・配色の実リグレッションは検出できる範囲（1%）に設定
+  // ベースライン画像は Linux(arm64) でのみ生成・比較する（visual.spec.ts のガード参照）。
+  expect: {
+    toHaveScreenshot: {
+      animations: "disabled",
+      maxDiffPixelRatio: 0.01,
+    },
   },
   projects: [
     {
