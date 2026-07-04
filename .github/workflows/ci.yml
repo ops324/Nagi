@@ -38,20 +38,22 @@ jobs:
           NEXT_PUBLIC_SUPABASE_ANON_KEY: dummy-anon-key-for-ci-build
 
   e2e:
-    runs-on: ubuntu-latest
+    # arm64 ランナー（ubuntu-24.04-arm、公開リポジトリは無料の想定＝要確認: GitHub の
+    # arm64 ホストランナー課金/提供条件の公式ドキュメント未参照。初回 CI 実行で課金が
+    # 発生しないことを確認する）＋ Playwright 公式
+    # コンテナで実行する。ビジュアル回帰テスト（e2e/visual.spec.ts）のベースライン
+    # 画像は同じイメージ・同じ arch（linux/arm64）で生成しており、arch とフォント
+    # 描画を CI と完全一致させることでピクセル比較の揺れを排除する。
+    # ベースライン更新は scripts/vrt-update-baselines.sh（同一イメージを使用）。
+    runs-on: ubuntu-24.04-arm
+    container:
+      image: mcr.microsoft.com/playwright:v1.61.0-noble
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-
+      # コンテナに node・chromium は同梱済みのため setup-node / playwright install は不要。
       - name: Install dependencies
         run: npm ci
-
-      - name: Install Playwright browser (chromium)
-        run: npx playwright install --with-deps chromium
 
       - name: Run E2E tests
         run: npm run test:e2e
