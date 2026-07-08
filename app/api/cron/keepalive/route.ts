@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import * as Sentry from "@sentry/nextjs";
 
 // Vercel Cron（日次）から GET される Supabase keepalive エンドポイント。
 // Supabase 無料プランは「DB アクティビティ」が7日途切れると一時停止される。
@@ -10,6 +11,31 @@ import { NextResponse, type NextRequest } from "next/server";
 // 未設定 or 不一致は 401（公式推奨パターン）。service role は使わず anon key に留める。
 // force-dynamic で静的化させず必ず関数を実行する。
 export const dynamic = "force-dynamic";
+
+// Sentry Cron Monitoring（dead-man's-switch）。
+// keepalive が成功したときだけ ok check-in を送る。cron 不発・CRON_SECRET 不一致（401）・
+// Supabase 到達失敗のいずれでも ok が届かず、Sentry が定刻超過で "missed" として通知する。
+// monitorConfig を渡すことで monitor をコードから upsert（ダッシュボードでの手動作成が不要）。
+const MONITOR_SLUG = "supabase-keepalive";
+const MONITOR_CONFIG = {
+  schedule: { type: "crontab", value: "0 15 * * *" },
+  checkinMargin: 60, // Hobby cron は「時」内でドリフトするため遅延を許容（分）
+  maxRuntime: 5,
+  timezone: "Etc/UTC",
+} as const;
+
+async function reportCheckIn(ok: boolean) {
+  try {
+    Sentry.captureCheckIn(
+      { monitorSlug: MONITOR_SLUG, status: ok ? "ok" : "error" },
+      MONITOR_CONFIG
+    );
+    // serverless では関数凍結前に送信を保証する
+    await Sentry.flush(2000);
+  } catch {
+    // 監視 check-in の失敗は keepalive 本処理に影響させない
+  }
+}
 
 export async function GET(request: NextRequest) {
   const authHeader = request.headers.get("authorization");
@@ -40,8 +66,10 @@ export async function GET(request: NextRequest) {
         cache: "no-store",
       }
     );
+    await reportCheckIn(res.ok);
     return NextResponse.json({ ok: res.ok, supabase: res.status });
   } catch {
+    await reportCheckIn(false);
     return NextResponse.json(
       { ok: false, error: "Supabase request failed" },
       { status: 500 }
