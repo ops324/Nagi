@@ -101,7 +101,13 @@ create policy "管理者は全エントリ参照可"
   using (auth.uid() = user_id or public.is_admin());
 
 -- 9. 管理者用: 全ユーザーのentries集計ビュー
-create or replace view public.admin_analytics as
+-- security_invoker = on 必須（v1.82.0）：省略すると definer 実行になり、ビュー所有者
+-- （postgres＝RLS 免除）の権限で基底テーブルを読むため、SELECT 権限を持つ *すべての*
+-- ロールが全ユーザーの email・活動履歴を取得できる（Supabase Advisor が CRITICAL 判定）。
+-- on にすると呼び出し元の権限＋RLS が適用され、管理者は 8. の is_admin() ポリシー経由で
+-- 従来どおり全行、一般ユーザーは自分の行のみになる。
+create or replace view public.admin_analytics
+  with (security_invoker = on) as
 select
   p.id as user_id,
   p.email,
@@ -114,7 +120,9 @@ left join public.entries e on e.user_id = p.id
 group by p.id, p.email, p.created_at;
 
 -- 10. 感情集計ビュー
-create or replace view public.admin_emotion_stats as
+-- security_invoker = on 必須（v1.82.0）。理由は 9. と同じ。
+create or replace view public.admin_emotion_stats
+  with (security_invoker = on) as
 select
   em->>'label' as emotion_label,
   count(*) as count
@@ -200,43 +208,50 @@ $$ language plpgsql security definer;
 -- 14. Nagiのことば お気に入り機能（v1.43.0）
 alter table public.entries add column if not exists is_favorited boolean default false;
 
--- 15. Data API 明示的 GRANT（Supabase 2026-05-30 ポリシー変更対応）
--- 背景: 2026-10-30 以降、public スキーマのテーブルは明示的 GRANT がないと
---       supabase-js / PostgREST / GraphQL からアクセス不可になる
--- 新規テーブル追加時は必ずここに GRANT を追記すること
+-- 15. Data API の GRANT（Supabase 2026-05-30 ポリシー変更対応 / v1.82.0 で全面見直し）
+--
+-- 背景1: 2026-10-30 以降、public スキーマのテーブルは明示的 GRANT がないと
+--        supabase-js / PostgREST / GraphQL からアクセス不可になる
+-- 背景2: **Supabase プロジェクトの初期状態では anon / authenticated に `grant all` が
+--        付与されている**（default privileges 由来）。2026-08-02 に本番を実測したところ、
+--        profiles には両ロールとも DELETE/INSERT/REFERENCES/SELECT/TRIGGER/TRUNCATE/UPDATE
+--        の7権限すべてが付いていた。つまり「grant を書かない＝権限がない」ではない。
+--        したがって **必ず revoke all してから必要な権限だけを grant し直す**。
+--        新規テーブル追加時もこの形式を守ること。
+--
+-- 権限の原則:
+--   profiles … 読み取りのみ。書き込みは createAdminClient（service_role）経由に限定
+--   entries  … 本人の CRUD（行の制限は RLS）。anon の SELECT は keepalive 用に必要
+--   ビュー   … authenticated のみ。security_invoker = on（9. / 10.）で RLS が効く
 
--- profiles は SELECT のみ（v1.82.0：update を削除。詳細は末尾 16.）
--- 書き込みが必要な列を追加する場合も authenticated に UPDATE を戻さず、
--- createAdminClient（service_role）経由のサーバーサイド更新にすること。
-grant select
-  on public.profiles
-  to authenticated;
+revoke all on public.profiles from anon, authenticated;
+grant select on public.profiles to authenticated;
 
-grant select, insert, update, delete
-  on public.entries
-  to authenticated;
+-- anon の SELECT は app/api/cron/keepalive/route.ts が使う（Supabase の7日自動停止対策で
+-- anon key から `entries?select=id&limit=1` を叩く）。RLS により結果は 0 件だが Postgres 上で
+-- クエリは実行される＝DB アクティビティになる。**剥奪すると 2026-07-05 の自動停止が再発する。**
+revoke all on public.entries from anon, authenticated;
+grant select on public.entries to anon;
+grant select, insert, update, delete on public.entries to authenticated;
 
-grant select
-  on public.admin_analytics
-  to authenticated;
-
-grant select
-  on public.admin_emotion_stats
-  to authenticated;
+revoke all on public.admin_analytics from anon, authenticated;
+revoke all on public.admin_emotion_stats from anon, authenticated;
+grant select on public.admin_analytics to authenticated;
+grant select on public.admin_emotion_stats to authenticated;
 
 -- rate_limits は createAdminClient（service_role）経由のみ使用するため GRANT 不要
 
--- 16. profiles の UPDATE 権限を剥奪（v1.82.0 / 権限昇格の封鎖）
+-- 16. 権限昇格と PII 漏洩の封鎖（v1.82.0 / 既存 DB への遡及適用）
 --
 -- 【背景】
--- 上記 4.（L42-44）の UPDATE ポリシーと 15.（L204-206）の GRANT は、どちらも
--- 「列」を限定していなかった。RLS は *行* を制御するが *列* は制御しないため、
+-- 上記 4. の UPDATE ポリシーと 15. の GRANT は、どちらも「列」を限定していなかった。
+-- RLS は *行* を制御するが *列* は制御しないため、
 -- 認証済みユーザーがブラウザのコンソールから自分の行の任意の列を書き換えられた：
 --
 --   supabase.from("profiles").update({ is_admin: true }).eq("id", 自分のID)
 --
--- これが通ると is_admin()（L82、SECURITY DEFINER）が true を返すようになり、
--- entries の SELECT ポリシー（L97 の `auth.uid() = user_id or public.is_admin()`）
+-- これが通ると is_admin()（8. の SECURITY DEFINER 関数）が true を返すようになり、
+-- entries の SELECT ポリシー（`auth.uid() = user_id or public.is_admin()`）
 -- 経由で **全ユーザーの日記本文** が参照可能になる。
 -- app/admin/layout.tsx のサーバー側チェックも同じ is_admin を見るため素通りする。
 --
@@ -254,18 +269,50 @@ grant select
 -- サーバーサイド更新にすること。列を限定した grant update (col) も可だが、
 -- 列追加のたびに GRANT の追記漏れが権限昇格に直結するため推奨しない。
 
--- 【適用範囲】
--- 新規環境では上記 4. / 15. を修正済みのため、この節は既存 DB への遡及適用用。
--- 何度実行しても安全（冪等）。anon も念のため対象にして GRANT と RLS の2層で防ぐ。
+-- 【本番実測（2026-08-02）】
+-- 実際の本番 DB は SQL ファイルの記述よりも権限が広かった。
+--   select grantee, privilege_type from information_schema.table_privileges
+--   where table_schema='public' and table_name='profiles';
+--   → 28 行 ＝ anon / authenticated / postgres / service_role の4ロール × 7権限。
+--     anon と authenticated に DELETE/INSERT/REFERENCES/SELECT/TRIGGER/TRUNCATE/UPDATE 全部。
+-- 原因は Supabase プロジェクト初期の default privileges（`grant all`）。
+-- このため 15. を「revoke all してから grant し直す」形式に全面改訂した。
+--
+-- 実際に悪用可能だったのは以下の2つ（他は RLS にポリシーが無くデフォルト拒否、
+-- TRUNCATE/TRIGGER/REFERENCES は PostgREST から到達不能）：
+--   ① authenticated の UPDATE on profiles → is_admin 昇格 → 全ユーザーの日記本文
+--   ② 管理ビューの definer 実行 → 一般ユーザーが全ユーザーの email・活動履歴を取得
+--      （Supabase Advisor も "Security Definer View" を CRITICAL 判定していた。9./10. で是正）
 
-revoke update on public.profiles from authenticated;
-revoke update on public.profiles from anon;
+-- 【適用範囲】
+-- 新規環境では 4. / 9. / 10. / 15. を修正済みのため、この節は既存 DB への遡及適用用。
+-- 何度実行しても安全（冪等）。2026-08-02 に本番へ適用済み。
+
+revoke all on public.profiles from anon, authenticated;
+grant select on public.profiles to authenticated;
 
 drop policy if exists "自分のプロフィールのみ更新可" on public.profiles;
 
--- 【適用後の確認】以下が 1 行も返さないこと（update が消えていること）
---   select grantee, privilege_type, column_name
---   from information_schema.column_privileges
---   where table_name = 'profiles'
---     and grantee = 'authenticated'
---     and privilege_type = 'UPDATE';
+revoke all on public.entries from anon, authenticated;
+grant select on public.entries to anon;
+grant select, insert, update, delete on public.entries to authenticated;
+
+alter view public.admin_analytics set (security_invoker = on);
+alter view public.admin_emotion_stats set (security_invoker = on);
+revoke all on public.admin_analytics from anon, authenticated;
+revoke all on public.admin_emotion_stats from anon, authenticated;
+grant select on public.admin_analytics to authenticated;
+grant select on public.admin_emotion_stats to authenticated;
+
+-- 【適用後の確認】anon は entries の SELECT のみ、authenticated は profiles/ビューが
+-- SELECT・entries が4権限、だけになること
+--   select table_name, grantee, privilege_type
+--   from information_schema.table_privileges
+--   where table_schema = 'public'
+--     and table_name in ('profiles','entries','admin_analytics','admin_emotion_stats')
+--     and grantee in ('anon','authenticated')
+--   order by table_name, grantee, privilege_type;
+--
+-- 【動作確認】ログイン → 記録の作成／編集／削除、および /admin で全ユーザーが
+-- 一覧に出ること（security_invoker = on 後も is_admin() ポリシー経由で全行見える）。
+-- 2026-08-02 に実施し、いずれも問題なしを確認済み。
