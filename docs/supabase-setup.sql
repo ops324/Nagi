@@ -39,9 +39,13 @@ create policy "自分のプロフィールのみ参照可"
   on public.profiles for select
   using (auth.uid() = id);
 
-create policy "自分のプロフィールのみ更新可"
-  on public.profiles for update
-  using (auth.uid() = id);
+-- v1.82.0 で削除（権限昇格の封鎖。詳細は末尾 16. を参照）
+-- RLS は行を制御するが列は制御しないため、列を限定しない UPDATE ポリシーは
+-- 自分の行の is_admin を書き換えられてしまう。profiles への書き込みは
+-- createAdminClient（service_role）経由のサーバーサイド更新に限定する。
+-- create policy "自分のプロフィールのみ更新可"
+--   on public.profiles for update
+--   using (auth.uid() = id);
 
 -- 5. entries ポリシー
 create policy "自分の記録のみ参照可"
@@ -201,7 +205,10 @@ alter table public.entries add column if not exists is_favorited boolean default
 --       supabase-js / PostgREST / GraphQL からアクセス不可になる
 -- 新規テーブル追加時は必ずここに GRANT を追記すること
 
-grant select, update
+-- profiles は SELECT のみ（v1.82.0：update を削除。詳細は末尾 16.）
+-- 書き込みが必要な列を追加する場合も authenticated に UPDATE を戻さず、
+-- createAdminClient（service_role）経由のサーバーサイド更新にすること。
+grant select
   on public.profiles
   to authenticated;
 
@@ -247,7 +254,12 @@ grant select
 -- サーバーサイド更新にすること。列を限定した grant update (col) も可だが、
 -- 列追加のたびに GRANT の追記漏れが権限昇格に直結するため推奨しない。
 
+-- 【適用範囲】
+-- 新規環境では上記 4. / 15. を修正済みのため、この節は既存 DB への遡及適用用。
+-- 何度実行しても安全（冪等）。anon も念のため対象にして GRANT と RLS の2層で防ぐ。
+
 revoke update on public.profiles from authenticated;
+revoke update on public.profiles from anon;
 
 drop policy if exists "自分のプロフィールのみ更新可" on public.profiles;
 
