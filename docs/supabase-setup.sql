@@ -218,3 +218,42 @@ grant select
   to authenticated;
 
 -- rate_limits は createAdminClient（service_role）経由のみ使用するため GRANT 不要
+
+-- 16. profiles の UPDATE 権限を剥奪（v1.82.0 / 権限昇格の封鎖）
+--
+-- 【背景】
+-- 上記 4.（L42-44）の UPDATE ポリシーと 15.（L204-206）の GRANT は、どちらも
+-- 「列」を限定していなかった。RLS は *行* を制御するが *列* は制御しないため、
+-- 認証済みユーザーがブラウザのコンソールから自分の行の任意の列を書き換えられた：
+--
+--   supabase.from("profiles").update({ is_admin: true }).eq("id", 自分のID)
+--
+-- これが通ると is_admin()（L82、SECURITY DEFINER）が true を返すようになり、
+-- entries の SELECT ポリシー（L97 の `auth.uid() = user_id or public.is_admin()`）
+-- 経由で **全ユーザーの日記本文** が参照可能になる。
+-- app/admin/layout.tsx のサーバー側チェックも同じ is_admin を見るため素通りする。
+--
+-- 【安全性】
+-- アプリ側から profiles を UPDATE している箇所は存在しない（2026-08-02 時点）：
+--   - app/page.tsx:17            … select("is_admin") のみ
+--   - app/admin/layout.tsx:16    … select("is_admin") のみ
+--   - app/api/account/delete/route.ts:49 … adminClient（service_role）経由の delete
+-- メール／パスワード変更は supabase.auth.updateUser() 経由で profiles を通らない。
+-- したがって UPDATE を剥奪しても機能への影響はない。
+--
+-- 【今後の方針】
+-- profiles に書き込みが必要な列（journal_intent / plan 等）を追加する場合は、
+-- authenticated に UPDATE を戻さず、必ず createAdminClient（service_role）経由の
+-- サーバーサイド更新にすること。列を限定した grant update (col) も可だが、
+-- 列追加のたびに GRANT の追記漏れが権限昇格に直結するため推奨しない。
+
+revoke update on public.profiles from authenticated;
+
+drop policy if exists "自分のプロフィールのみ更新可" on public.profiles;
+
+-- 【適用後の確認】以下が 1 行も返さないこと（update が消えていること）
+--   select grantee, privilege_type, column_name
+--   from information_schema.column_privileges
+--   where table_name = 'profiles'
+--     and grantee = 'authenticated'
+--     and privilege_type = 'UPDATE';
