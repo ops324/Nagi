@@ -138,8 +138,9 @@ create table if not exists public.rate_limits (
   window_start timestamptz not null default now()
 );
 
--- RLSを無効化（サービスロールキーからのみアクセスするため）
--- ※ このテーブルはAPIルートからcreateAdminClientで操作する
+-- RLS を有効化し、ポリシーを1つも作らない＝ anon / authenticated からは全操作デフォルト拒否。
+-- このテーブルは API ルートから createAdminClient（service_role）でのみ操作する。
+-- ※ v1.82.0 以前のコメントは「RLS を無効化」と書かれていたが実際は有効化しており、記述が誤りだった。
 alter table public.rate_limits enable row level security;
 
 -- 12. レート制限チェック関数（アトミック操作）
@@ -148,7 +149,11 @@ create or replace function public.check_rate_limit(
   p_limit integer,
   p_window_seconds integer
 )
-returns jsonb as $$
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''    -- v1.83.0：本体の参照は public.rate_limits と完全修飾済みのため影響なし
+as $$
 declare
   v_now timestamptz := now();
   v_record record;
@@ -158,6 +163,18 @@ declare
   v_remaining integer;
   v_reset_at timestamptz;
 begin
+  -- 【多層防御・v1.83.0】引数を安全側にクランプする。
+  -- p_window_seconds に 0 や負値を渡されると下の「ウィンドウ期限切れ」分岐が必ず真になり、
+  -- count が毎回 1 にリセットされてレート制限が完全に無効化される。
+  -- EXECUTE は 17. で service_role のみに絞ったが、将来の再付与・revoke 漏れに備えて
+  -- 関数自身でも防ぐ（アプリ側の実使用は全て 3600 秒なので 60 秒下限は当たらない）。
+  if p_window_seconds is null or p_window_seconds < 60 then
+    p_window_seconds := 60;
+  end if;
+  if p_limit is null or p_limit < 1 then
+    p_limit := 1;
+  end if;
+
   -- 既存レコードを取得（行ロック）
   select * into v_record from public.rate_limits where key = p_key for update;
 
@@ -195,15 +212,19 @@ begin
     'reset_at', extract(epoch from v_reset_at) * 1000
   );
 end;
-$$ language plpgsql security definer;
+$$;
 
 -- 13. 古いレート制限レコードを掃除する関数
 create or replace function public.cleanup_rate_limits()
-returns void as $$
+returns void
+language plpgsql
+security definer
+set search_path = ''    -- v1.83.0：本体の参照は public.rate_limits と完全修飾済み
+as $$
 begin
   delete from public.rate_limits where window_start < now() - interval '2 hours';
 end;
-$$ language plpgsql security definer;
+$$;
 
 -- 14. Nagiのことば お気に入り機能（v1.43.0）
 alter table public.entries add column if not exists is_favorited boolean default false;
@@ -239,7 +260,23 @@ revoke all on public.admin_emotion_stats from anon, authenticated;
 grant select on public.admin_analytics to authenticated;
 grant select on public.admin_emotion_stats to authenticated;
 
--- rate_limits は createAdminClient（service_role）経由のみ使用するため GRANT 不要
+-- rate_limits は createAdminClient（service_role）経由のみ使用する。
+-- ただし「GRANT を書かない＝権限がない」ではない（背景2）ため、明示的に revoke する。
+-- service_role には revoke しない（PostgREST 経由の service_role アクセスに必要）。
+revoke all on public.rate_limits from anon, authenticated;
+
+-- 関数の EXECUTE も同様。Postgres は新規関数の EXECUTE を PUBLIC に既定付与するため、
+-- 書かなければ anon key から /rest/v1/rpc/ で直接呼べてしまう（詳細は 17.）。
+revoke execute on function public.check_rate_limit(text, integer, integer) from public, anon, authenticated;
+revoke execute on function public.cleanup_rate_limits() from public, anon, authenticated;
+grant  execute on function public.check_rate_limit(text, integer, integer) to service_role;
+grant  execute on function public.cleanup_rate_limits() to service_role;
+
+-- 【revoke してはいけない関数】public.is_admin()
+-- RLS ポリシー（8.）の中で呼ばれる関数は「呼び出しロールの権限」で評価されるため、
+-- authenticated / anon から EXECUTE を剥がすと profiles / entries の SELECT 自体が
+-- permission denied になり、アプリ全体が停止する。anon も keepalive の entries SELECT で
+-- ポリシーが評価されるため対象外にすること。
 
 -- 16. 権限昇格と PII 漏洩の封鎖（v1.82.0 / 既存 DB への遡及適用）
 --
@@ -316,3 +353,62 @@ grant select on public.admin_emotion_stats to authenticated;
 -- 【動作確認】ログイン → 記録の作成／編集／削除、および /admin で全ユーザーが
 -- 一覧に出ること（security_invoker = on 後も is_admin() ポリシー経由で全行見える）。
 -- 2026-08-02 に実施し、いずれも問題なしを確認済み。
+
+
+-- 17. レート制限 RPC の封鎖（v1.83.0）
+--
+-- 【背景】
+-- Postgres は新規関数の EXECUTE を PUBLIC に既定付与する。12. / 13. の関数は
+-- SECURITY DEFINER であり、EXECUTE を絞っていなかったため、ブラウザに露出している
+-- anon key から PostgREST の /rest/v1/rpc/ 経由で誰でも直接呼べる状態だった。
+--
+-- 【成立していた攻撃】レート制限カウンタのリセット
+--   supabase.rpc('check_rate_limit', { p_key: 'comment:<自分のUUID>', p_limit: 1, p_window_seconds: 0 })
+-- p_window_seconds = 0 を渡すと 12. の「ウィンドウ期限切れ」分岐
+--   v_now > v_record.window_start + (p_window_seconds || ' seconds')::interval
+-- が前回呼び出しから 1μs 経過するだけで真になり、count が 1 にリセットされる。
+-- p_key は `comment:${userId}`（app/api/comment/route.ts）で userId は自分の JWT の sub
+-- ＝ブラウザから自明。戻り値は攻撃者にとって無意味で、副作用（リセット）だけが目的。
+-- → 20回/時の制限が事実上無効。**日次・月次上限を足しても同じ手口で回避されるため、
+--    ここを塞がずに上限を増やしても意味がない。**
+-- 併せて、任意キーで rate_limits に無制限に行を作れる（掃除 cron も未実装）。
+--
+-- 【なぜ v1.82.1 の後でなければ適用できなかったか】
+-- v1.82.1 以前の createAdminClient は cookie を渡していたため authenticated として
+-- 実行されており、lib/rate-limit.ts の RPC は「EXECUTE が PUBLIC である」ことに依存して
+-- 動いていた。先に revoke すると RPC が権限エラーになり、lib/rate-limit.ts の catch が
+-- インメモリストアへ**無言で**降格する（本番ではログも出ない）。
+-- v1.82.1（createAdminClient を真の service_role 化）のデプロイ完了後に適用すること。
+--
+-- 【is_admin() を revoke してはいけない】
+-- RLS ポリシー内で呼ばれる関数は呼び出しロールの権限で評価される。authenticated から
+-- 剥がすと profiles / entries の SELECT が permission denied になりアプリ全体が停止する。
+-- anon も keepalive の entries SELECT でポリシーが評価されるため対象外。
+-- handle_new_user() は returns trigger なので直接呼び出しは Postgres が拒否する。
+--
+-- 【適用範囲】新規環境では 12. / 13. / 15. を修正済みのため、この節は既存 DB への遡及適用用。
+-- 何度実行しても安全（冪等）。
+
+revoke all on public.rate_limits from anon, authenticated;
+
+revoke execute on function public.check_rate_limit(text, integer, integer) from public, anon, authenticated;
+revoke execute on function public.cleanup_rate_limits() from public, anon, authenticated;
+grant  execute on function public.check_rate_limit(text, integer, integer) to service_role;
+grant  execute on function public.cleanup_rate_limits() to service_role;
+
+-- 12. / 13. の関数本体（引数クランプ ＋ search_path 固定）は上の create or replace を
+-- そのまま再実行して反映させること。関数定義の差し替えなので冪等。
+
+-- 【適用後の確認】
+-- ① 両方とも false になること
+--   select has_function_privilege('authenticated','public.check_rate_limit(text,integer,integer)','EXECUTE') as by_authenticated,
+--          has_function_privilege('anon','public.check_rate_limit(text,integer,integer)','EXECUTE')          as by_anon;
+-- ② rate_limits の GRANT が anon / authenticated から消えていること
+--   select grantee, privilege_type from information_schema.table_privileges
+--   where table_schema='public' and table_name='rate_limits' and grantee in ('anon','authenticated');
+-- ③ クランプが効いていること（service_role で実行。remaining が毎回減っていくこと）
+--   select public.check_rate_limit('clamp-test', 3, 0);   -- 2回続けて実行する
+--   delete from public.rate_limits where key = 'clamp-test';
+--
+-- 【動作確認】記録を投稿できること（レート制限が service_role で正常に働き、
+-- インメモリへ降格していないこと）。降格していると 20回/時を超えても 429 が出ない。
