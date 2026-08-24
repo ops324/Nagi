@@ -33,6 +33,21 @@ export async function POST(request: NextRequest) {
 }
 ```
 
+生成ロジック本体は `lib/generate-comment.ts`（本番と `/try` で共有。入力長でティア判定し
+`max_tokens` とコメント文字数目安を変える）。プロンプトは `prompts/system-prompt.ts`。
+
+### `app/api/comment/demo/route.ts`
+
+- POST メソッドのみ・**認証なし**（`/try` から呼ぶ公開ルート）
+- レート制限は user_id ではなく **IP 単位**（乱用・コストのバックストップ）
+- 入力上限は本番より短い（コスト抑制）
+
+### `app/api/cron/keepalive/route.ts`
+
+- GET・Vercel Cron（日次）から呼ばれる。Supabase の7日自動停止を防ぐ実 DB クエリ
+- `Authorization: Bearer <CRON_SECRET>` の照合が**唯一のセキュリティ境界**（middleware を素通りする）
+- 成功時のみ Sentry の check-in を送る（届かなければ missed で通知＝死活監視）
+
 ### `app/api/account/delete/route.ts`
 
 - DELETE メソッド

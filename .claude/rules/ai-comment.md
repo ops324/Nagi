@@ -84,7 +84,7 @@
 
 | 項目 | 内容 |
 |------|------|
-| 文字数 | 入力長に応じた段階制（短文30〜50字／中文60〜100字／長文100〜150字）。目安は `app/api/comment/route.ts` のティア判定で各メッセージに付与 |
+| 文字数 | 入力長に応じた段階制（短文30〜50字／中文60〜100字／長文100〜150字）。目安は `lib/generate-comment.ts` のティア判定で各メッセージに付与 |
 | 語り口 | 温かく、淡々と。「です・ます」調 |
 | 構造 | 「観察・反映」＋「問いかけ or 余韻」の2パート |
 
@@ -153,7 +153,7 @@
 ## プロンプト管理
 
 - システムプロンプトは `prompts/system-prompt.ts` に分離（`export const SYSTEM_PROMPT = ...`）
-- `app/api/comment/route.ts` からインポートして使用
+- `lib/generate-comment.ts` からインポートして使用（本番 `/api/comment` と お試し `/api/comment/demo` で共有）
 - プロンプト変更時はコードを触らず `prompts/system-prompt.ts` のみ編集
 - 使用モデル: `claude-haiku-4-5-20251001`（コスト効率優先）
-- max_tokens: 800
+- max_tokens: **入力長のティアで可変**（短文 300／中文 500／長文 800）。週次サマリーは 400

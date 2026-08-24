@@ -52,11 +52,18 @@ if (!profile?.is_admin) redirect("/");
 
 **原則**: RLS は必ず有効化。ユーザーは自分のデータのみ操作可能。
 
-- `profiles`: `auth.uid() = id` のみ SELECT / UPDATE 可
-- `entries`: `auth.uid() = user_id` のみ SELECT / INSERT / DELETE 可
+- `profiles`: `auth.uid() = id` のみ SELECT 可。**UPDATE は不可**（ポリシーも `authenticated` の UPDATE 権限も v1.82.0 で削除）
+- `entries`: `auth.uid() = user_id` のみ SELECT / INSERT / UPDATE / DELETE 可
+- `rate_limits`: `anon`/`authenticated` は `revoke all`。service_role の RPC 経由のみ（v1.83.0）
+- 管理ビュー（`admin_analytics`/`admin_emotion_stats`）は `security_invoker = on` 必須（v1.82.0）
 - 管理者は `is_admin()` 関数（SECURITY DEFINER）でRLSをバイパスして全データ参照可
 
 **`is_admin()` 関数の注意**: SECURITY DEFINER のため、関数定義の変更は慎重に。
+また **`authenticated`/`anon` から EXECUTE を revoke してはいけない**（RLS ポリシー内で評価されるため、剥がすとアプリ全体が停止する）。
+
+**profiles の UPDATE を復活させないこと**: RLS は *行* を制御するが *列* は制御しないため、
+列を限定しない UPDATE があると `update({ is_admin: true })` で自分を管理者に昇格でき、全ユーザーの日記本文が読める。
+profiles への書き込みが必要になったら `createAdminClient`（service_role）経由のサーバーサイド更新にする。
 
 ## 入力バリデーション
 
@@ -65,7 +72,7 @@ if (!profile?.is_admin) redirect("/");
 | 場所 | バリデーション |
 |------|-------------|
 | 記録入力フォーム | 空文字チェック（trim後0文字はAPI呼び出しなし） |
-| パスワード変更 | 6文字以上・確認入力一致チェック |
+| パスワード変更 | 8文字以上・英字と数字の両方を含む・確認入力一致チェック（登録・再設定も同じ） |
 | アカウント削除 | メールアドレス入力による二重確認 |
 
 ### サーバーサイド（APIルート）
