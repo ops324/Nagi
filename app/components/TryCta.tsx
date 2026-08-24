@@ -44,7 +44,7 @@ export default function TryCta() {
           borderRadius: "9999px",
         }}
       >
-        登録のまえに、凪を試す
+        登録のまえに、凪をお試し
       </Link>
 
       {/* 補足は「回数の上限」ではなく「保存されない」という事実を伝える。
