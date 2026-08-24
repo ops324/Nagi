@@ -1,7 +1,7 @@
 # Nagi ハーネス - Claude Code 運用ルール
 
-最終更新: 2026-06-25
-バージョン: v1.2.0
+最終更新: 2026-08-24
+バージョン: v1.3.0
 
 このファイルは Claude Code が起動時に自動ロードする運用ルール集。
 Nagi プロジェクトにおける Claude Code の作業全般に適用される。
@@ -182,9 +182,32 @@ Stop hook（`eslint` + `tsc --noEmit`）は毎ターン自動で走る軽段の�
 2. `/review`（4 観点並列レビュー）を実行し、`must` を解消する
 3. `feature-flow.md` の **FF-5 が該当**する変更（認証 / RLS / APIキー / 環境変数 /
    `createAdminClient` 等に触れた）では `/security-review` も実行する
+4. **UI を意図的に変えたなら VRT ベースラインを再生成する**（下記 CC-9.1）
 
 いずれか未実施なら CC-3 の **Fail** として報告する。
 build / test と `/review` 結果は CC-3 の Pass/Fail/Skip 形式で報告に含める。
+
+### CC-9.1: VRT ベースラインの再生成（UI 変更時は必須）
+
+DOM・文言・配色・余白のいずれかを意図的に変えた PR では、**必ず**次を実行して差分をコミットする。
+
+```bash
+bash scripts/vrt-update-baselines.sh
+```
+
+- **mac ローカルで `npx playwright test visual` を直接回してはいけない**（フォント描画が CI と異なり必ず不一致になる）。
+  ベースラインは必ず本スクリプト経由（Linux/arm64 コンテナ・Docker/Colima 必要）で生成する。
+- スクリプトは `--update-snapshots=all` で 8 枚すべてを焼き直す。既定の `changed` は
+  「比較に失敗した画像だけ」書き換えるため、`playwright.config.ts` の `maxDiffPixelRatio: 0.01`（1%）の
+  許容内に収まる小さな変更（短い文言の差し替え等）では**ベースラインが更新されず、実 UI と乖離した画像が残る**
+  （v1.86.0 で実際に発生。スクリプトが「8 passed」と報告して 1 枚も更新しなかった）。
+- 再生成後に差分が出た画像は**中身を確認する**。アンチエイリアスの揺らぎだけ（最大チャンネル差 1・数十ピクセル）なら
+  意味のないバイナリ差分なので `git checkout -- e2e/visual.spec.ts-snapshots/` で戻す。実際の見た目が変わっているなら
+  コミットし、報告書に「どの面がどう変わったか」を書く。
+- **VRT は 1% 許容のため文言の変更を検出しない**（レイアウト・配色の崩れを検出する層）。
+  文言の担保は e2e（`getByRole` / `getByText`）で行う＝両方を揃えて初めて回帰が防げる。
+- テーマは時刻・季節・タイムゾーンに依存する（`lib/solar.ts`）。VRT は `setFixedTime` と
+  `timezoneId: "UTC"` で凍結してある。この固定を外すとベースラインが全滅するため触らない。
 
 ---
 
