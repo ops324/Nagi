@@ -29,13 +29,18 @@ test.skip(
   "VRT は Linux ベースライン専用（CI/Docker で実行）。ローカル mac 等ではスキップ。",
 );
 
-// テーマ（app/components/ThemeManager.tsx）は new Date() の「時」と「月」で
-// <html> に .dark / .time-* / .season-* を付与し、globals.css の CSS 変数を
-// 全面的に上書きする（配色がライト↔ダーク・時間帯・季節で変わる）。CI は任意の
-// UTC 時刻で走るため、時刻を固定してテーマを凍結しないと夜間ジョブでダーク反転し
-// VRT が確実に落ちる。setFixedTime は goto 前（beforeEach）に設定し、ThemeManager の
-// 初回 applyTheme（useEffect）と 60 秒ごとの再適用の両方を固定値に縛る。
-//   2026-06-15T12:00:00Z = 12時（time-day・昼＝light）/ 6月（season-summer）
+// テーマ（app/components/ThemeManager.tsx）は <html> に .dark / .time-* / .season-* を
+// 付与し、globals.css の CSS 変数を全面的に上書きする（配色がライト↔ダーク・時間帯・
+// 季節で変わる）。CI は任意の UTC 時刻で走るため、時刻を固定してテーマを凍結しないと
+// 夜間ジョブでダーク反転し VRT が確実に落ちる。setFixedTime は goto 前（beforeEach）に
+// 設定し、ThemeManager の初回 applyTheme（useEffect）と 60 秒ごとの再適用の両方を固定値に縛る。
+//   2026-06-15T12:00:00Z / 6月（season-summer）
+//
+// v1.86.0 以降、時刻4区分は固定時刻ではなく**その日の太陽**（lib/solar.ts）で決まり、
+// 位置はブラウザのタイムゾーンから推定する。VRT はコンテナ／CI ともに TZ=UTC で走るため
+// 経度 0°・緯度 35.7°N となり、上記の固定時刻は南中付近＝**time-day（light）**に落ちる
+// （lib/solar.test.ts の「VRT の決定性」ケースで固定）。テーマ切替そのものの検証は
+// タイムゾーンを固定した e2e/theme.spec.ts が担当する。
 const FIXED_TIME = new Date("2026-06-15T12:00:00Z");
 
 // モバイルビューポート（iPhone 相当の幅）。モバイル初回ログインの上部見切れ（v1.57 で

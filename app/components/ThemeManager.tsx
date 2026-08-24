@@ -1,10 +1,22 @@
 "use client";
 
 import { useEffect } from "react";
+import {
+  DEFAULT_LATITUDE,
+  getSunTimes,
+  getTimePhase,
+  longitudeFromUtcOffsetMinutes,
+} from "@/lib/solar";
 
-// 時刻・季節に基づくテーマ切替（v1.41）
-// 時刻4区分: 朝06–10 / 昼10–17 / 夕17–19 / 夜19–06
-// 季節4種: 春3–5 / 夏6–8 / 秋9–11 / 冬12–2
+// 時刻・季節に基づくテーマ切替（v1.41 → v1.86.0 で時刻の基準を太陽に変更）
+//
+// 時刻4区分は**実際の夜明け・日没**に追従する（lib/solar.ts）:
+//   夜 = 薄明の外側（夜明け前・日没後）／朝 = 夜明け〜日の出+2.5h
+//   夕 = 日の入り-1.5h〜薄明の終わり／昼 = その間
+// 位置はタイムゾーンから推定する（位置情報の許可ダイアログを出さない・通信もしない）。
+// 極夜・白夜など太陽から決められない場合は固定時刻（朝06–10…）へフォールバックする。
+//
+// 季節4種: 春3–5 / 夏6–8 / 秋9–11 / 冬12–2（v1.41 から変更なし）
 export default function ThemeManager() {
   useEffect(() => {
     const TIME_CLASSES = ["time-morning", "time-day", "time-evening", "time-night"] as const;
@@ -12,20 +24,18 @@ export default function ThemeManager() {
 
     const applyTheme = () => {
       const now = new Date();
-      const h = now.getHours();
       const m = now.getMonth() + 1;
       const root = document.documentElement;
 
-      const isNight = h >= 19 || h < 6;
-      root.classList.toggle("dark", isNight);
+      // getTimezoneOffset() は「UTC − 現地」の分。東側を正にするため符号を反転する（JST → +540）
+      const longitude = longitudeFromUtcOffsetMinutes(-now.getTimezoneOffset());
+      const sun = getSunTimes(now, DEFAULT_LATITUDE, longitude);
+      const phase = getTimePhase(now, sun);
 
-      const timeClass =
-        h >= 6 && h < 10  ? "time-morning" :
-        h >= 10 && h < 17 ? "time-day"     :
-        h >= 17 && h < 19 ? "time-evening" :
-                            "time-night";
+      root.classList.toggle("dark", phase === "night");
+
       TIME_CLASSES.forEach(c => root.classList.remove(c));
-      root.classList.add(timeClass);
+      root.classList.add(`time-${phase}`);
 
       const seasonClass =
         m >= 3 && m <= 5  ? "season-spring" :
