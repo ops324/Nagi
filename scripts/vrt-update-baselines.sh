@@ -39,5 +39,10 @@ docker run --rm --platform=linux/arm64 --network host \
     done
     # CI を未設定にして reuseExistingServer=true（起動済みサーバを再利用）
     unset CI
-    npx playwright test visual --update-snapshots
+    # --update-snapshots=all（既定の changed ではない）。
+    # 既定の changed は「比較に失敗したものだけ」書き換えるため、
+    # playwright.config.ts の maxDiffPixelRatio(1%) の許容内に収まる小さな変更
+    # （文言の差し替え等）ではベースラインが更新されず、実 UI と乖離した画像が
+    # 残り続ける。本スクリプトは「今の見た目を焼き直す」ためのものなので必ず全枚数を書き換える。
+    npx playwright test visual --update-snapshots=all
   '
