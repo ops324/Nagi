@@ -76,7 +76,7 @@ test.describe("/try お試し体験", () => {
 // 新規ユーザーが最初に着く画面（未認証は proxy.ts で /auth/login にリダイレクト）
 // から、お試し体験へボタンとして到達できることを固定する。
 // 12px のテキストリンク1本に戻る／文言変更やリンク切れで導線が失われる、を検出する。
-const TRY_ENTRY_LABEL = "登録のまえに、凪を試す";
+const TRY_ENTRY_LABEL = "登録のまえに、凪をお試し";
 
 test.describe("お試し体験への導線", () => {
   const ENTRY_POINTS = [
