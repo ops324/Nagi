@@ -9,6 +9,7 @@ import InputCard from "@/app/components/InputCard";
 import MemoryCard from "@/app/components/MemoryCard";
 import WeeklySummaryCard from "@/app/components/WeeklySummaryCard";
 import EntryList from "@/app/components/EntryList";
+import TryCta from "@/app/components/TryCta";
 import TabBar from "@/app/components/ui/TabBar";
 import SearchBar from "@/app/components/ui/SearchBar";
 import { EMOTION_COLORS } from "@/app/types";
@@ -446,6 +447,13 @@ export default function PreviewPage() {
               onDeleteCancel={() => {}}
               onDelete={() => {}}
             />
+          </Section>
+
+          {/* 14. お試し体験への導線（ログイン・登録の両画面で共有） */}
+          <Section title="お試しへの導線" caption="ログイン画面・登録画面の下部に置く、登録前のお試し体験（/try）への入口。primary（緑ベタ）とは階層を分けた輪郭ボタン。ログイン画面と同じ TryCta を描画（押すと /try に遷移します）。">
+            <div style={{ maxWidth: 384 }}>
+              <TryCta />
+            </div>
           </Section>
         </div>
 

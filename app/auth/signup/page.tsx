@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import TryCta from "@/app/components/TryCta";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -133,13 +134,10 @@ export default function SignupPage() {
           </Link>
         </p>
 
-        <p className="text-center text-xs mt-3" style={{ color: "var(--text-muted)" }}>
-          <Link href="/try" className="underline" style={{ color: "var(--text-secondary)" }}>
-            登録のまえに、凪を試してみる
-          </Link>
-        </p>
+        {/* お試し体験への導線（テキストリンクから二次ボタンへ格上げ・v1.85.0） */}
+        <TryCta />
 
-        <p className="text-center text-xs mt-4" style={{ color: "var(--text-muted)" }}>
+        <p className="text-center text-xs mt-7" style={{ color: "var(--text-muted)" }}>
           ご登録の前に{" "}
           <Link href="/terms" className="underline" style={{ color: "var(--text-muted)" }}>
             利用規約
