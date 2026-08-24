@@ -1,12 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import {
-  DEFAULT_LATITUDE,
-  getSunTimes,
-  getTimePhase,
-  longitudeFromUtcOffsetMinutes,
-} from "@/lib/solar";
+import { estimateLocation, getSunTimes, getTimePhase } from "@/lib/solar";
 
 // 時刻・季節に基づくテーマ切替（v1.41 → v1.86.0 で時刻の基準を太陽に変更）
 //
@@ -14,6 +9,7 @@ import {
 //   夜 = 薄明の外側（夜明け前・日没後）／朝 = 夜明け〜日の出+2.5h
 //   夕 = 日の入り-1.5h〜薄明の終わり／昼 = その間
 // 位置はタイムゾーンから推定する（位置情報の許可ダイアログを出さない・通信もしない）。
+// 緯度は IANA ゾーン名の代表都市表、経度は**標準時**オフセット（夏時間を除く）から求める。
 // 極夜・白夜など太陽から決められない場合は固定時刻（朝06–10…）へフォールバックする。
 //
 // 季節4種: 春3–5 / 夏6–8 / 秋9–11 / 冬12–2（v1.41 から変更なし）
@@ -27,9 +23,9 @@ export default function ThemeManager() {
       const m = now.getMonth() + 1;
       const root = document.documentElement;
 
-      // getTimezoneOffset() は「UTC − 現地」の分。東側を正にするため符号を反転する（JST → +540）
-      const longitude = longitudeFromUtcOffsetMinutes(-now.getTimezoneOffset());
-      const sun = getSunTimes(now, DEFAULT_LATITUDE, longitude);
+      // 位置はタイムゾーンから推定する（緯度は代表都市の表・経度は標準時オフセット）
+      const { latitude, longitude } = estimateLocation(now);
+      const sun = getSunTimes(now, latitude, longitude);
       const phase = getTimePhase(now, sun);
 
       root.classList.toggle("dark", phase === "night");
