@@ -215,6 +215,16 @@ end;
 $$;
 
 -- 13. 古いレート制限レコードを掃除する関数
+--
+-- 【不変条件・v1.84.0】interval '2 hours' > アプリ側の最大レート制限ウィンドウ
+-- 行の削除はそのキーのカウンタを 0 に戻すことと機能的に同一で、17. で塞いだ攻撃
+-- （p_window_seconds = 0 で count をリセット）と同じプリミティブになる。
+-- 進行中のウィンドウを消さないことが安全性の前提。2026-08-24 時点の呼び出し元は全て 1 時間：
+--   app/api/comment/route.ts（20回/h） / app/api/comment/demo/route.ts（5回/h）
+--   app/api/weekly-summary/route.ts（10回/h） / app/api/account/delete/route.ts（3回/h）
+-- **2 時間を超えるウィンドウ（日次・月次上限など）を追加する場合は、この interval も必ず広げること。**
+-- 怠るとその上限が毎晩リセットされ、エラーもテスト失敗も出さずに無効化される。
+-- v1.25.1 の定義以来この関数は一度も呼ばれていなかったため無害だったが、18. で日次実行される。
 create or replace function public.cleanup_rate_limits()
 returns void
 language plpgsql
@@ -371,7 +381,7 @@ grant select on public.admin_emotion_stats to authenticated;
 -- ＝ブラウザから自明。戻り値は攻撃者にとって無意味で、副作用（リセット）だけが目的。
 -- → 20回/時の制限が事実上無効。**日次・月次上限を足しても同じ手口で回避されるため、
 --    ここを塞がずに上限を増やしても意味がない。**
--- 併せて、任意キーで rate_limits に無制限に行を作れる（掃除 cron も未実装）。
+-- 併せて、任意キーで rate_limits に無制限に行を作れた（掃除 cron は 18. で実装）。
 --
 -- 【なぜ v1.82.1 の後でなければ適用できなかったか】
 -- v1.82.1 以前の createAdminClient は cookie を渡していたため authenticated として
@@ -412,3 +422,92 @@ grant  execute on function public.cleanup_rate_limits() to service_role;
 --
 -- 【動作確認】記録を投稿できること（レート制限が service_role で正常に働き、
 -- インメモリへ降格していないこと）。降格していると 20回/時を超えても 429 が出ない。
+
+
+-- 18. レート制限テーブルの自動掃除（pg_cron / v1.84.0）
+--
+-- 【背景】
+-- 13. の cleanup_rate_limits() は v1.25.1 で定義されたが、**呼び出し元が一度も存在しなかった**
+-- （grep で確認：定義と GRANT 以外の参照ゼロ）。そのため rate_limits の行は 2 時間の
+-- ウィンドウを過ぎても残り続け、2026-08-24 時点で 2026-06-24 の行が現存していた。
+-- 17. で anon / authenticated からの任意キー挿入は塞いだため増加ペースは正規利用分のみだが、
+-- 掃除機構がないこと自体は変わらないため、ここで恒久化する。
+--
+-- 【適用範囲・実行前提】
+-- 本節は pg_cron が有効化済みであることを前提とする。**新規環境で 1.〜18. を通しで実行すると、
+-- 未有効化の場合ここで `ERROR: schema "cron" does not exist` で停止する**（途中停止を完了と
+-- 誤認しないこと）。先に Dashboard → Database → Extensions で pg_cron（1.6.4）を有効化する。
+-- 無料プランで利用可（2026-08-24 に本番プロジェクトで実機確認。公式ドキュメント・料金ページの
+-- いずれにも記載がなかったため実物で確定した）。SQL で有効化する場合は公式手順に従う：
+--   create extension pg_cron with schema pg_catalog;
+-- ※ **拡張を無効化すると登録済みジョブが全て永久に削除される**ため OFF に戻さないこと。
+--
+-- 【実行ロール】—— service_role ではない
+-- pg_cron はジョブを **cron.schedule() を呼んだロール**として実行する（cron.job.username）。
+-- SQL Editor から登録すれば postgres であり、17. で EXECUTE を grant した service_role ではない。
+-- それでも動くのは cleanup_rate_limits() の所有者が postgres であり、
+-- `revoke execute ... from public` が所有者の権限を剥がさないためで、17. とは矛盾しない。
+-- **別ロールで登録すると (jobname, username) が別扱いになり、上書きではなく2本が並走する。**
+-- 必ず SQL Editor（postgres）から実行し、下の確認クエリで username を確認すること。
+--
+-- 【ジョブ①】レート制限の掃除（毎日 16:00 GMT ＝ JST 翌 01:00）
+-- keepalive の Vercel Cron（15:00 GMT）とはログ・切り分けを混ぜないため時刻をずらす
+-- （Hobby cron は「時」内でドリフトするため厳密な排他にはならない。競合資源もないので実害なし）。
+--
+-- 【ジョブ②】実行履歴の purge（毎週日曜 16:30 GMT ＝ **JST 月曜 01:30**）
+-- **cron.job_run_details は自動で掃除されない**（公式ドキュメント明記）。1 実行 1 行で増えるため、
+-- ①だけ入れると rate_limits より速く増える別テーブルを作ることになり本末転倒。
+-- さらに公式は「アップグレード前にこのテーブルを掃除せよ」とし、肥大時は複製処理が
+-- ディスクを圧迫して **Postgres バージョンアップグレード自体が失敗しうる**と警告している。
+-- ②は将来の有料プラン移行後のアップグレードを詰まらせないための必須要件。
+-- 保持を 30 日にしているのは、①②が静かに失敗したときの唯一の診断材料が履歴であるため
+-- （日次ジョブなら 30 日でも約 30 行で、掃除の目的と両立する）。
+-- end_time is null の行はクラッシュ等で完了更新が入らなかった残骸で、そのままでは永久に残るため
+-- start_time 基準でも落とす（実行中の行は 30 日未満なので消えない）。
+--
+-- 【監視はない】
+-- 2 ジョブとも失敗しても通知は飛ばない（cron.job_run_details に status='failed' が残るのみ）。
+-- v1.81.0 の keepalive のような dead-man's-switch は持たない。止まっても実害は
+-- 「行が溜まる」だけのため釣り合いで見送ったが、**沈黙failure の構造は同じ**である点は自覚しておく。
+-- 定期的に下の確認クエリを通すこと。
+--
+-- 【Postgres バージョンアップグレード後の再登録】
+-- 公式ドキュメント: "During the Supabase project upgrade, the pg_cron extension gets dropped
+-- and recreated." ジョブ定義（cron.job）が維持されるとは明記されていないため、
+-- **アップグレード後は必ず `select * from cron.job;` を確認し、空なら本節を再実行する**。
+-- cron.schedule() は同名・同ロールのジョブを上書きするため何度実行しても安全（冪等）。
+-- なお料金プランの変更・コンピュートサイズの変更は pg_upgrade を伴わないと考えられるが、
+-- **公式ドキュメントは両者について明示していない（要確認）**。いずれの場合も対処は本節の再実行で同じ。
+
+select cron.schedule('nagi-cleanup-rate-limits', '0 16 * * *',
+  $$ select public.cleanup_rate_limits() $$);
+
+select cron.schedule('nagi-purge-cron-history', '30 16 * * 0',
+  $$ delete from cron.job_run_details
+     where end_time < now() - interval '30 days'
+        or (end_time is null and start_time < now() - interval '30 days') $$);
+
+-- 【適用後の確認】
+-- ① 2 ジョブが active で、username が postgres であること（並走登録の検出も兼ねる）
+--   select jobid, jobname, username, schedule, active from cron.job order by jobid;
+-- ② スケジュール解釈のタイムゾーン（既定 GMT。GUC で変わりうるため実測する）
+--   show cron.timezone;
+-- ③ 実行履歴（①は JST 01:00、②は **JST 月曜 01:30** に走る。翌日以降に確認）
+--   ※ unschedule 後も履歴は残るため left join にする（内部結合だと結合から落ちる）
+--   select j.jobname, d.status, d.start_time
+--   from cron.job_run_details d left join cron.job j using (jobid)
+--   order by d.start_time desc limit 5;
+-- ④ 掃除が効いていること（2 時間より古い行が残っていないこと）
+--   select key, window_start from public.rate_limits
+--   where window_start < now() - interval '2 hours';
+--
+-- 【ジョブの削除が必要になった場合】
+--   select cron.unschedule('nagi-cleanup-rate-limits');
+--   select cron.unschedule('nagi-purge-cron-history');
+-- ※ unschedule しても cron.job_run_details の履歴は残る（公式ドキュメント明記）。
+--
+-- 【keepalive を廃止しないこと】
+-- pg_cron が毎日 DB 内でクエリを実行するようになったが、**バックグラウンドワーカーの実行が
+-- Supabase の「7日自動停止」判定でアクティビティに数えられるかは公式に定義がない（要確認）**。
+-- app/api/cron/keepalive/route.ts は 2026-07-05 の自動停止を受けた恒久対策であり、
+-- 本節をもって代替とみなさない。
