@@ -1,10 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
   DEFAULT_LATITUDE,
+  estimateLocation,
   getSunTimes,
   getTimePhase,
   getTimePhaseByClock,
+  latitudeFromTimeZone,
   longitudeFromUtcOffsetMinutes,
+  standardUtcOffsetMinutes,
   type SunTimes,
 } from "./solar";
 
@@ -60,6 +63,20 @@ describe("getSunTimes", () => {
   it("極夜（北緯78°の冬）では null を返す", () => {
     expect(getSunTimes(new Date("2026-12-21T12:00:00Z"), 78, 15)).toBeNull();
   });
+
+  it("緯度±90°ちょうどでも NaN を返さず null になる", () => {
+    expect(getSunTimes(new Date("2026-06-21T12:00:00Z"), 90, 0)).toBeNull();
+    expect(getSunTimes(new Date("2026-06-21T12:00:00Z"), -90, 0)).toBeNull();
+  });
+
+  it("薄明が成立しない高緯度（6月のレイキャビク）は薄明を日の出・日の入りに縮退させる", () => {
+    // 日の出・日の入りは存在するが太陽高度が -6° まで下がらないケース。
+    // null にして固定時刻へ落とすより、実際の空に近い値を返す。
+    const sun = getSunTimes(new Date("2026-06-21T12:00:00Z"), 64.15, -21.94);
+    expect(sun).not.toBeNull();
+    expect(sun!.dawn.getTime()).toBe(sun!.sunrise.getTime());
+    expect(sun!.dusk.getTime()).toBe(sun!.sunset.getTime());
+  });
 });
 
 describe("longitudeFromUtcOffsetMinutes", () => {
@@ -72,9 +89,81 @@ describe("longitudeFromUtcOffsetMinutes", () => {
     expect(longitudeFromUtcOffsetMinutes(-300)).toBe(-75); // EST
   });
 
-  it("範囲外のオフセットでも ±180° に収める", () => {
-    expect(longitudeFromUtcOffsetMinutes(900)).toBe(180);
-    expect(longitudeFromUtcOffsetMinutes(-900)).toBe(-180);
+  it("UTC+13/+14（NZ夏時間・キリバス）は 180°を超えるので正規化する", () => {
+    // クランプしてしまうと南中が 1〜2 時間ずれる（195°E ≡ -165°、210°E ≡ -150°）
+    expect(longitudeFromUtcOffsetMinutes(780)).toBe(-165);
+    expect(longitudeFromUtcOffsetMinutes(840)).toBe(-150);
+  });
+
+  it("正規化した経度でも南中は現地の正午付近になる", () => {
+    // オフセット +780 分（UTC+13）の地点。現地時計の 12:00 は UTC 前日 23:00
+    const localNoonUtc = new Date("2026-06-20T23:00:00Z");
+    const sun = getSunTimes(localNoonUtc, -36.8, longitudeFromUtcOffsetMinutes(780))!;
+    const minutesFromLocalNoon = Math.abs(sun.solarNoon.getTime() - localNoonUtc.getTime()) / 60_000;
+    expect(minutesFromLocalNoon).toBeLessThan(20);
+  });
+});
+
+describe("latitudeFromTimeZone", () => {
+  it("南半球のゾーンは負の緯度になる（季節反転を防ぐ）", () => {
+    expect(latitudeFromTimeZone("Australia/Sydney")).toBeLessThan(0);
+    expect(latitudeFromTimeZone("Pacific/Auckland")).toBeLessThan(0);
+    expect(latitudeFromTimeZone("America/Sao_Paulo")).toBeLessThan(0);
+    expect(latitudeFromTimeZone("Africa/Johannesburg")).toBeLessThan(0);
+  });
+
+  it("主要ゾーンは代表都市の緯度を返す", () => {
+    expect(latitudeFromTimeZone("Asia/Tokyo")).toBe(35.7);
+    expect(latitudeFromTimeZone("Europe/London")).toBe(51.5);
+    expect(latitudeFromTimeZone("America/New_York")).toBe(40.7);
+  });
+
+  it("表にないゾーンは地域プレフィックス、それも無ければ既定値", () => {
+    expect(latitudeFromTimeZone("Australia/Broken_Hill")).toBeLessThan(0); // Australia/ で南半球
+    expect(latitudeFromTimeZone("Asia/Ulaanbaatar")).toBe(DEFAULT_LATITUDE);
+    expect(latitudeFromTimeZone(undefined)).toBe(DEFAULT_LATITUDE);
+  });
+});
+
+describe("standardUtcOffsetMinutes（夏時間の除去）", () => {
+  it("夏時間中でも標準時のオフセットを返す（ベルリン=+60）", () => {
+    expect(standardUtcOffsetMinutes("Europe/Berlin", new Date("2026-07-15T12:00:00Z"))).toBe(60);
+    expect(standardUtcOffsetMinutes("Europe/Berlin", new Date("2026-01-15T12:00:00Z"))).toBe(60);
+  });
+
+  it("夏時間のない日本は常に +540", () => {
+    expect(standardUtcOffsetMinutes("Asia/Tokyo", new Date("2026-07-15T12:00:00Z"))).toBe(540);
+  });
+
+  it("南半球（シドニー）は夏時間が1月側でも標準時 +600 を返す", () => {
+    expect(standardUtcOffsetMinutes("Australia/Sydney", new Date("2026-01-15T12:00:00Z"))).toBe(600);
+  });
+});
+
+describe("estimateLocation", () => {
+  it("シドニーは南半球・東経150°として推定する", () => {
+    const loc = estimateLocation(new Date("2026-06-21T02:00:00Z"), "Australia/Sydney");
+    expect(loc.latitude).toBeCloseTo(-33.9, 1);
+    expect(loc.longitude).toBe(150);
+  });
+
+  it("夏時間中のベルリンでも経度が15°のまま動かない", () => {
+    const summer = estimateLocation(new Date("2026-07-15T12:00:00Z"), "Europe/Berlin");
+    const winter = estimateLocation(new Date("2026-01-15T12:00:00Z"), "Europe/Berlin");
+    expect(summer.longitude).toBe(15);
+    expect(winter.longitude).toBe(15);
+  });
+
+  it("シドニーの冬（6月）は日が短く、夏（12月）は長い＝季節が反転していない", () => {
+    const june = estimateLocation(new Date("2026-06-21T02:00:00Z"), "Australia/Sydney");
+    const juneSun = getSunTimes(new Date("2026-06-21T02:00:00Z"), june.latitude, june.longitude)!;
+    const december = estimateLocation(new Date("2026-12-21T02:00:00Z"), "Australia/Sydney");
+    const decSun = getSunTimes(new Date("2026-12-21T02:00:00Z"), december.latitude, december.longitude)!;
+
+    const juneDaylight = (juneSun.sunset.getTime() - juneSun.sunrise.getTime()) / 3_600_000;
+    const decDaylight = (decSun.sunset.getTime() - decSun.sunrise.getTime()) / 3_600_000;
+    expect(juneDaylight).toBeLessThan(10.5); // シドニーの冬至は約9時間54分
+    expect(decDaylight).toBeGreaterThan(14);  // 夏至は約14時間25分
   });
 });
 
