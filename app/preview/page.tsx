@@ -10,6 +10,7 @@ import MemoryCard from "@/app/components/MemoryCard";
 import WeeklySummaryCard from "@/app/components/WeeklySummaryCard";
 import EntryList from "@/app/components/EntryList";
 import TryCta from "@/app/components/TryCta";
+import { spawnRipple } from "@/app/lib/ripple";
 import TabBar from "@/app/components/ui/TabBar";
 import SearchBar from "@/app/components/ui/SearchBar";
 import { EMOTION_COLORS } from "@/app/types";
@@ -99,18 +100,6 @@ const TABS = [
   { key: "calendar", label: "カレンダー" },
   { key: "graph", label: "グラフ" },
 ];
-
-// クリック位置から波紋を生成（既存 logout-ripple の汎用版）
-function spawnRipple(e: React.PointerEvent<HTMLElement>) {
-  const btn = e.currentTarget;
-  const rect = btn.getBoundingClientRect();
-  const span = document.createElement("span");
-  span.className = "v2-ripple";
-  span.style.left = `${e.clientX - rect.left}px`;
-  span.style.top = `${e.clientY - rect.top}px`;
-  btn.appendChild(span);
-  span.addEventListener("animationend", () => span.remove());
-}
 
 export default function PreviewPage() {
   const [theme, setTheme] = useState("light");
