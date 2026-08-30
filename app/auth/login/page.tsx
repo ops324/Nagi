@@ -6,6 +6,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import TryCta from "@/app/components/TryCta";
+import { APP_SUBTITLE } from "@/app/lib/about";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -60,7 +61,7 @@ export default function LoginPage() {
             </div>
             <h1 className="text-4xl font-extralight tracking-[0.3em]" style={{ color: "var(--text-secondary)" }}>凪</h1>
           </div>
-          <p className="text-xs tracking-widest mt-2" style={{ color: "var(--text-muted)" }}>Nagi · 自己観察の記録</p>
+          <p className="text-xs tracking-widest mt-2" style={{ color: "var(--text-muted)" }}>{APP_SUBTITLE}</p>
         </div>
 
         {/* フォーム */}
