@@ -33,7 +33,7 @@ export default function Welcome({ open, onOpenChange }: WelcomeProps) {
           <RadixDialog.Title className="text-sm tracking-widest mb-5"
             style={{ color: "var(--text-muted)" }}>凪へ ようこそ</RadixDialog.Title>
 
-          <p className="text-xs leading-loose max-w-[300px] text-center"
+          <p className="text-xs leading-loose max-w-[300px] text-center jp-phrase"
             style={{ color: "var(--text-secondary)" }}>
             {ABOUT_INTRO}
           </p>

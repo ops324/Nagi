@@ -155,7 +155,7 @@ export default function AccountPage() {
         <section className="rounded-3xl p-6 elev-1"
           style={{ backgroundColor: "var(--bg-card)", border: "1px solid var(--border)" }}>
           <p className="text-xs tracking-widest mb-4" style={{ color: "var(--text-muted)" }}>凪について</p>
-          <p className="text-xs leading-loose" style={{ color: "var(--text-secondary)" }}>
+          <p className="text-xs leading-loose jp-phrase" style={{ color: "var(--text-secondary)" }}>
             {ABOUT_INTRO}
           </p>
         </section>

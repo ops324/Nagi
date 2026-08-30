@@ -6,7 +6,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import TryCta from "@/app/components/TryCta";
-import { APP_SUBTITLE, PRIVACY_ASSURANCE, JP_PHRASE_WRAP } from "@/app/lib/about";
+import { APP_SUBTITLE, PRIVACY_ASSURANCE } from "@/app/lib/about";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -60,9 +60,9 @@ export default function SignupPage() {
           <p className="text-xs tracking-widest mt-2" style={{ color: "var(--text-muted)" }}>{APP_SUBTITLE}</p>
         </div>
 
-        {/* 日記を預ける直前に「誰にも読まれない」ことを示す（v1.88.0）。
-            根拠は RLS（entries は auth.uid() = user_id のみ）。 */}
-        <p className="text-center text-xs leading-relaxed mb-8" style={{ color: "var(--text-muted)", ...JP_PHRASE_WRAP }}>
+        {/* 日記を預ける直前に「ほかの利用者からは見えない」ことを示す（v1.88.0）。
+            約束の範囲と根拠は app/lib/about.ts の PRIVACY_ASSURANCE のコメントを参照。 */}
+        <p className="text-center text-xs leading-relaxed jp-phrase mb-8" style={{ color: "var(--text-muted)" }}>
           {PRIVACY_ASSURANCE}
         </p>
 
