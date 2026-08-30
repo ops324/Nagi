@@ -526,6 +526,14 @@ textarea { caret-color: var(--green); }
 .elev-2 { box-shadow: var(--shadow-2); }
 .elev-3 { box-shadow: var(--shadow-3); }
 
+/* 日本語の折り返しを文節境界にする（v1.88.0）。
+   既定の line-break では「開いてくださ／い。」と行末に1文字だけ残り、
+   text-wrap: balance では「そっと言／葉」と語中で切れる。auto-phrase は
+   文節境界で折り返すためどちらも起きない。
+   対応は Chromium 系のみ（Safari は未対応＝要確認）。未対応環境では既定の
+   折り返しにフォールバックするだけで、レイアウトは壊れない。 */
+.jp-phrase { word-break: auto-phrase; }
+
 /* Dialog / Overlay 出現（本体適用：emphasized の scale+fade） */
 .dialog-pop { animation: v2-dialog-in 0.3s var(--easing-emphasized) both; }
 .overlay-fade { animation: overlay-fade-in 0.2s var(--easing-calm) both; }
