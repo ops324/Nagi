@@ -6,6 +6,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import TryCta from "@/app/components/TryCta";
+import { APP_SUBTITLE, PRIVACY_ASSURANCE, JP_PHRASE_WRAP } from "@/app/lib/about";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -49,15 +50,21 @@ export default function SignupPage() {
       <div className="w-full max-w-sm">
 
         {/* ロゴ */}
-        <div className="text-center mb-10">
+        <div className="text-center mb-6">
           <div className="flex items-center justify-center gap-3">
             <div className="w-12 h-12 rounded-2xl overflow-hidden">
               <Image src="/icon-nagi.png" alt="Nagi" width={48} height={48} priority className="w-12 h-12 block" />
             </div>
             <h1 className="text-4xl font-extralight tracking-[0.3em]" style={{ color: "var(--text-secondary)" }}>凪</h1>
           </div>
-          <p className="text-xs tracking-widest mt-2" style={{ color: "var(--text-muted)" }}>Nagi · 自己観察の記録</p>
+          <p className="text-xs tracking-widest mt-2" style={{ color: "var(--text-muted)" }}>{APP_SUBTITLE}</p>
         </div>
+
+        {/* 日記を預ける直前に「誰にも読まれない」ことを示す（v1.88.0）。
+            根拠は RLS（entries は auth.uid() = user_id のみ）。 */}
+        <p className="text-center text-xs leading-relaxed mb-8" style={{ color: "var(--text-muted)", ...JP_PHRASE_WRAP }}>
+          {PRIVACY_ASSURANCE}
+        </p>
 
         {/* フォーム */}
         <div className="rounded-3xl p-8" style={{ backgroundColor: "var(--bg-card)", border: "1px solid var(--border)" }}>

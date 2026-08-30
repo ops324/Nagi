@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Entry, Emotion, EMOTION_COLORS } from "../types";
 import EntryCard from "../components/EntryCard";
-import { ABOUT_INTRO } from "../lib/about";
+import { APP_SUBTITLE, ABOUT_INTRO, PRIVACY_ASSURANCE, JP_PHRASE_WRAP } from "../lib/about";
 import { spawnRipple } from "../lib/ripple";
 
 // ── HomeClient と共通の演出ロジック（お試し用に最小限を独立保持） ──
@@ -134,11 +134,13 @@ export default function DemoClient() {
           </div>
           <h1 className="text-4xl font-extralight tracking-[0.3em]" style={{ color: "var(--text-secondary)" }}>凪</h1>
         </div>
-        <p className="text-xs tracking-widest mt-2" style={{ color: "var(--text-muted)" }}>Nagi · 自己観察の記録</p>
+        <p className="text-xs tracking-widest mt-2" style={{ color: "var(--text-muted)" }}>{APP_SUBTITLE}</p>
       </div>
 
       {/* 導入 */}
-      <p className="text-sm leading-relaxed text-center mb-3" style={{ color: "var(--text-secondary)" }}>
+      {/* 折り返しは JP_PHRASE_WRAP（about.ts）で文節境界にそろえる */}
+      <p className="text-sm leading-relaxed text-center mb-3"
+        style={{ color: "var(--text-secondary)", ...JP_PHRASE_WRAP }}>
         {ABOUT_INTRO}
       </p>
       {/* 保存されない旨の注記は入力前のみ。応答後は下部CTAの注記と重複するため隠す */}
@@ -229,8 +231,13 @@ export default function DemoClient() {
             <p className="text-sm leading-relaxed mb-1" style={{ color: "var(--text-secondary)" }}>
               もうすこし、凪と過ごしてみたくなったら。
             </p>
-            <p className="text-sm leading-relaxed mb-7" style={{ color: "var(--text-secondary)" }}>
+            <p className="text-sm leading-relaxed mb-1" style={{ color: "var(--text-secondary)" }}>
               書いたことばは、登録すると残せます。
+            </p>
+            {/* 登録を決める場所で「誰にも読まれない」ことを示す（v1.88.0）。
+                根拠は RLS（entries は auth.uid() = user_id のみ）。 */}
+            <p className="text-sm leading-relaxed mb-7" style={{ color: "var(--text-secondary)", ...JP_PHRASE_WRAP }}>
+              {PRIVACY_ASSURANCE}
             </p>
             <Link
               href="/auth/signup"

@@ -16,6 +16,7 @@ import Welcome from "./Welcome";
 import Toast from "./ui/Toast";
 import TabBar from "./ui/TabBar";
 import SearchBar from "./ui/SearchBar";
+import { APP_SUBTITLE } from "@/app/lib/about";
 
 const LOADING_QUESTIONS: Record<"negative" | "positive" | "neutral", string[]> = {
   negative: [
@@ -511,7 +512,7 @@ export default function HomeClient({ initialEntries, userEmail, isAdmin }: HomeC
               </div>
               <div>
                 <h1 className="text-2xl font-extralight tracking-[0.2em]" style={{ color: "var(--text-secondary)" }}>凪</h1>
-                <p className="text-xs tracking-widest mt-0.5" style={{ color: "var(--text-muted)" }}>Nagi · 自己観察の記録</p>
+                <p className="text-xs tracking-widest mt-0.5" style={{ color: "var(--text-muted)" }}>{APP_SUBTITLE}</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
