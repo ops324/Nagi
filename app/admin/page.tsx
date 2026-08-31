@@ -1,13 +1,19 @@
 import { createClient } from "@/lib/supabase/server";
+import { contentLenDistribution } from "@/lib/admin-stats";
+import { logError } from "@/lib/log";
 import AdminDashboardClient from "./components/AdminDashboardClient";
 import type {
   UserRow, EmotionRow, EnergyTrend, HourDist, WeekDayDist,
   ContentLenDist, EmotionEnergy, ChurnBucket, RetentionData, AdminDashboardData,
 } from "./types";
 
-type EntryRaw = {
+// admin_entry_stats ビュー（docs/supabase-setup.sql 19.）の行。
+// 日記本文は含まない＝DB 側で char_length() に畳んだ content_len だけを受け取る。
+// 管理画面での本文の用途は文字数分布の集計のみで、画面には出ないため
+// アプリのサーバーメモリに他人の本文を載せる必要がない（v1.89.0）。
+type EntryStatRaw = {
   user_id: string;
-  content: string;
+  content_len: number;
   energy: number;
   dominant: string;
   created_at: string;
@@ -26,20 +32,39 @@ export default async function AdminPage() {
 
   // 認証 + 管理者権限チェックは layout.tsx で完了済み。
   // データ参照は RLS の is_admin() バイパスに依存する。
-  const [{ data: usersData }, { data: emotionData }, { data: allEntries }] = await Promise.all([
+  const [{ data: usersData, error: usersErr }, { data: emotionData, error: emotionErr }, { data: allEntries, error: entriesErr }] = await Promise.all([
     supabase.from("admin_analytics").select("*").order("registered_at", { ascending: false }),
     supabase.from("admin_emotion_stats").select("*"),
-    supabase.from("entries").select("user_id, content, energy, dominant, created_at").order("created_at", { ascending: true }),
+    supabase.from("admin_entry_stats").select("user_id, content_len, energy, dominant, created_at").order("created_at", { ascending: true }),
   ]);
+
+  // 取得に失敗しても以降は `|| []` で進むため、握りつぶすと管理画面が無言で「全部ゼロ」になる。
+  // とくに admin_entry_stats は v1.89.0 で新設したビューで、DB 未適用のまま
+  // デプロイされうる（keepalive が数ヶ月沈黙した v1.81.0 と同型の失敗モード）。
+  // 本文は絶対に渡さない（lib/log.ts の注意書き参照）＝ scope ラベルのみ。
+  for (const [scope, error] of [
+    ["admin:admin_analytics", usersErr],
+    ["admin:admin_emotion_stats", emotionErr],
+    ["admin:admin_entry_stats", entriesErr],
+  ] as const) {
+    if (error) logError(error, { scope });
+  }
 
   const users = (usersData as UserRow[]) || [];
   const emotions = (emotionData as EmotionRow[]) || [];
-  const entries = (allEntries as EntryRaw[]) || [];
+  // DB は snake_case → TS は camelCase に明示変換（content_len だけ名前が変わる）
+  const entries = ((allEntries as EntryStatRaw[]) || []).map((e) => ({
+    userId: e.user_id,
+    contentLen: e.content_len,
+    energy: e.energy,
+    dominant: e.dominant,
+    createdAt: e.created_at,
+  }));
 
   // --- エネルギー推移（日別平均。created_at の UTC 日付で集計：旧実装の slice(0,10) を踏襲）---
   const energyByDay: Record<string, number[]> = {};
   entries.forEach(e => {
-    const day = e.created_at.slice(0, 10);
+    const day = e.createdAt.slice(0, 10);
     if (!energyByDay[day]) energyByDay[day] = [];
     energyByDay[day].push(e.energy);
   });
@@ -51,7 +76,7 @@ export default async function AdminPage() {
   // --- 時間帯分布（JST）---
   const hourCounts: Record<number, number> = {};
   entries.forEach(e => {
-    const { hour } = jstParts(e.created_at);
+    const { hour } = jstParts(e.createdAt);
     hourCounts[hour] = (hourCounts[hour] || 0) + 1;
   });
   const hourDist: HourDist[] = Array.from({ length: 24 }, (_, h) => ({
@@ -63,7 +88,7 @@ export default async function AdminPage() {
   const DAYS = ["日", "月", "火", "水", "木", "金", "土"];
   const dayCounts: Record<number, number> = {};
   entries.forEach(e => {
-    const { day } = jstParts(e.created_at);
+    const { day } = jstParts(e.createdAt);
     dayCounts[day] = (dayCounts[day] || 0) + 1;
   });
   const weekDayDist: WeekDayDist[] = [1, 2, 3, 4, 5, 6, 0].map(i => ({
@@ -72,12 +97,7 @@ export default async function AdminPage() {
   }));
 
   // --- テキスト文字数分布 ---
-  const contentLenDist: ContentLenDist[] = [
-    { range: "〜50字",    count: entries.filter(e => e.content.length <= 50).length },
-    { range: "51〜150字", count: entries.filter(e => e.content.length > 50 && e.content.length <= 150).length },
-    { range: "151〜300字",count: entries.filter(e => e.content.length > 150 && e.content.length <= 300).length },
-    { range: "301字〜",   count: entries.filter(e => e.content.length > 300).length },
-  ];
+  const contentLenDist: ContentLenDist[] = contentLenDistribution(entries.map(e => e.contentLen));
 
   // --- 感情×平均エネルギー ---
   const eeMap: Record<string, number[]> = {};
@@ -116,8 +136,8 @@ export default async function AdminPage() {
   // --- リテンション率（登録後N日以降も記録したか）---
   const userMaxEntry: Record<string, string> = {};
   entries.forEach(e => {
-    if (!userMaxEntry[e.user_id] || e.created_at > userMaxEntry[e.user_id]) {
-      userMaxEntry[e.user_id] = e.created_at;
+    if (!userMaxEntry[e.userId] || e.createdAt > userMaxEntry[e.userId]) {
+      userMaxEntry[e.userId] = e.createdAt;
     }
   });
   const retention: RetentionData[] = [

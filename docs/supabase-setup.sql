@@ -356,7 +356,7 @@ grant select on public.admin_emotion_stats to authenticated;
 --   select table_name, grantee, privilege_type
 --   from information_schema.table_privileges
 --   where table_schema = 'public'
---     and table_name in ('profiles','entries','admin_analytics','admin_emotion_stats')
+--     and table_name in ('profiles','entries','admin_analytics','admin_emotion_stats','admin_entry_stats')
 --     and grantee in ('anon','authenticated')
 --   order by table_name, grantee, privilege_type;
 --
@@ -511,3 +511,74 @@ select cron.schedule('nagi-purge-cron-history', '30 16 * * 0',
 -- Supabase の「7日自動停止」判定でアクティビティに数えられるかは公式に定義がない（要確認）**。
 -- app/api/cron/keepalive/route.ts は 2026-07-05 の自動停止を受けた恒久対策であり、
 -- 本節をもって代替とみなさない。
+
+-- 19. 管理ダッシュボードから日記本文を切り離す（v1.89.0）
+-- ------------------------------------------------------------------
+-- 【背景】
+-- app/admin/page.tsx は `entries` から `content`（日記本文）を全ユーザー分取得していた。
+-- 用途は文字数分布（〜50字 / 51〜150字 / 151〜300字 / 301字〜）の集計だけで、
+-- 本文そのものは AdminDashboardClient へ渡らず画面にも出ない。
+-- それでも本文はアプリのサーバーメモリに載り、管理画面を開くたびに全件が転送されていた。
+-- 集計に必要なのは「長さ」だけなので、DB 側で char_length() に畳んでから返す。
+--
+-- 【この変更で得られるもの／得られないもの】
+-- 得られる: アプリの経路から本文が消える（最小権限化）。管理画面を開いても他人の日記本文が
+--           サーバーメモリと PostgREST のレスポンスに載らなくなり、漏洩時の被害範囲が縮む。
+--           ※ Sentry については、Node SDK は既定でローカル変数をキャプチャせず、
+--             lib/log.ts も本文を渡さない設計のため、変更前から載る経路は無かったはず（要確認）。
+-- 得られない: 「運営者が読めない」という保証。運営者は SUPABASE_SERVICE_ROLE_KEY と
+--           Supabase ダッシュボードを持ち、service_role は RLS を完全にバイパスする。
+--           また本文は AI コメント生成のため Anthropic に送信される（app/privacy/page.tsx 4章）。
+--           **したがって UI の PRIVACY_ASSURANCE を「ほかの誰にも見えません」へ強めることはできない。**
+--
+-- 【entries の管理者 SELECT ポリシー（8.）を外さない理由】
+-- RLS は *行* を制御する仕組みで、*列* を除外できない。列単位の GRANT は
+-- ロール単位でしか効かず、管理者も一般ユーザーも同じ `authenticated` のため区別できない。
+-- ポリシーごと落とすと 9. admin_analytics と 10. admin_emotion_stats
+-- （どちらも security_invoker = on で entries を読む）が管理者に対して空を返す。
+-- 回避するには管理ビュー3本を SECURITY DEFINER 化して内部で is_admin() ガードする必要があるが、
+-- v1.82.0 で「管理ビューは security_invoker = on 必須」を定めた経緯（definer 化による
+-- PII 漏洩）に逆行し、ガードを1行落とすだけで全ユーザーの日記が漏れる形になる。
+-- 一方で得られる実利は「管理者セッションから生の content を引けなくなる」ことだけで、
+-- 運営者は上記のとおりダッシュボードから読めるため実質的な効果がない。
+-- リスクに見合わないため採らない。
+--
+-- 【security_invoker = on 必須】9. / 10. と同じ理由（v1.82.0）。
+-- on なら呼び出し元の権限＋RLS が適用され、管理者は 8. の is_admin() ポリシー経由で
+-- 全行、一般ユーザーは自分の行のみになる（一般ユーザーが読んでも自分の統計しか出ない）。
+create or replace view public.admin_entry_stats
+  with (security_invoker = on) as
+select
+  e.user_id,
+  char_length(e.content) as content_len,
+  e.energy,
+  e.dominant,
+  e.created_at
+from public.entries e;
+
+-- 15. と同じ方針（「GRANT を書かない＝権限がない」ではない）。必ず revoke してから grant する。
+revoke all on public.admin_entry_stats from anon, authenticated;
+grant select on public.admin_entry_stats to authenticated;
+
+-- 【適用後の確認】
+-- ① ビューが security_invoker であること（reloptions に security_invoker=on が入る）
+--   select relname, reloptions from pg_class where relname = 'admin_entry_stats';
+-- ② content 列が含まれないこと
+--   select column_name from information_schema.columns
+--   where table_name = 'admin_entry_stats';
+-- ③ anon に権限が無く authenticated が SELECT だけであること
+--   ※ 所有者(postgres)と service_role の行も返るため、16. の点検クエリと同じく
+--     grantee を anon / authenticated に絞る（絞らないと必ず「他の行がある」となり誤判定する）
+--   select grantee, privilege_type from information_schema.role_table_grants
+--   where table_schema = 'public' and table_name = 'admin_entry_stats'
+--     and grantee in ('anon','authenticated');
+--
+-- ④ 【効果の検証】非管理者セッションで自分の行しか出ないこと
+--   （v1.82.0 の教訓＝「設定を書いたつもりで効いていなかった」を繰り返さないため、
+--     reloptions だけでなく実際の見え方を確かめる。一般ユーザーでログインしたブラウザから）
+--   select count(*) from public.admin_entry_stats;                       -- 自分の記録数と一致すること
+--   select count(distinct user_id) from public.admin_entry_stats;        -- 1 であること
+--
+-- ⑤ PostgREST がビューを認識しない場合はスキーマキャッシュを再読込する
+--   （Supabase は DDL イベントトリガで自動リロードするはずだが未確認＝要確認）
+--   notify pgrst, 'reload schema';

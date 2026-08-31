@@ -93,3 +93,40 @@ test.describe("凪の紹介文", () => {
     expect(ABOUT_INTRO).toContain("書きたいときだけ、開いてください。");
   });
 });
+
+// 開示の回帰防止（v1.89.0）
+// ------------------------------------------------------------------
+// 運営者アクセスの開示は「書ける約束の範囲」を決める前提になっている
+// （app/lib/about.ts の PRIVACY_ASSURANCE のコメント参照）。
+// 節ごと消えても他のテストは落ちないため、ここで固定する。
+test.describe("プライバシーポリシーの開示（v1.89.0）", () => {
+  test("運営者によるデータの取り扱いが明記されている", async ({ page }) => {
+    await page.goto("/privacy");
+    await expect(
+      // 節番号は前に節が挿入されるとずれる（本 PR 自体が 6→10 の繰り下げをしている）。
+      // 守りたいのは「節が消えていないこと」なので、番号は含めず見出し名で照合する。
+      page.getByRole("heading", { name: /運営者によるデータの取り扱い/ })
+    ).toBeVisible();
+    await expect(
+      page.getByText("日記の本文が分析画面に表示されることはありません", { exact: false })
+    ).toBeVisible();
+    await expect(
+      page.getByText("記録の内容を参照できる状態にあります", { exact: false })
+    ).toBeVisible();
+    // 管理画面はメールアドレス一覧も表示する（AdminDashboardClient のユーザー一覧）。
+    // 「統計情報のみ」と書くと過大な主張になるため、開示に含まれていることを固定する。
+    await expect(
+      page.getByText("登録済みメールアドレス", { exact: false })
+    ).toBeVisible();
+  });
+
+  test("5章はほかの利用者からの不可視として書かれている（運営者を含む表現にしない）", async ({ page }) => {
+    await page.goto("/privacy");
+    await expect(
+      page.getByText("ほかの利用者があなたの記録を読むことはできません", { exact: false })
+    ).toBeVisible();
+    await expect(
+      page.getByText("ユーザーは自分のデータのみにアクセスできます", { exact: false })
+    ).toHaveCount(0);
+  });
+});
