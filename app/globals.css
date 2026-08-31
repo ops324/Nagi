@@ -530,8 +530,13 @@ textarea { caret-color: var(--green); }
    既定の line-break では「開いてくださ／い。」と行末に1文字だけ残り、
    text-wrap: balance では「そっと言／葉」と語中で切れる。auto-phrase は
    文節境界で折り返すためどちらも起きない。
-   対応は Chromium 系のみ（Safari は未対応＝要確認）。未対応環境では既定の
-   折り返しにフォールバックするだけで、レイアウトは壊れない。 */
+   対応は Chromium 系のみ（Chrome/Edge 119+・Samsung Internet 25+）。
+   **Safari は未対応**（デスクトップ 27 まで／iOS 26.6 まで。Technology Preview は対応済み）、
+   Firefox も未対応。v1.88.1 で caniuse と WebKit エンジンの実測により確定（旧「要確認」を解消）。
+   未対応環境では computed value が normal に落ちるだけで、**行数も段落の高さも変わらない**
+   （390x844 実測: 紹介文 4行91px・プライバシー行 2行39px が WebKit/Chromium で一致）。
+   折り返し位置が日本語の既定挙動（語中で切れうる）に戻るのみで、レイアウトは壊れない。
+   Safari が実装すればコード変更なしで改善する progressive enhancement として扱う。 */
 .jp-phrase { word-break: auto-phrase; }
 
 /* Dialog / Overlay 出現（本体適用：emphasized の scale+fade） */
