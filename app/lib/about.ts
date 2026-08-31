@@ -15,9 +15,14 @@ export const ABOUT_FIRST_STEP =
 // 根拠は entries の RLS `using (auth.uid() = user_id or public.is_admin())`
 //（docs/supabase-setup.sql）。**他ユーザーからの不可視だけが保証される**。
 // 「ほかの誰にも見えません」とは書けない：
-//   ① 管理者は is_admin() バイパスで全ユーザーの本文を SELECT できる
-//      （app/admin/page.tsx が実際に content を取得している）
+//   ① 運営者は SUPABASE_SERVICE_ROLE_KEY と Supabase ダッシュボードを持ち、
+//      service_role は RLS を完全にバイパスする（DB 側の設定では塞げない）。
+//      加えて is_admin=true のアカウントは entries の RLS `or public.is_admin()` により、
+//      service_role キー無しの通常セッションからも全ユーザーの本文を SELECT できる
+//      （v1.89.0 で「アプリが取得しなくなった」だけで、DB 権限は残っている）
 //   ② 本文は AI コメント生成のため Anthropic に送信される（app/privacy/page.tsx 4章）
-// この文言を強める場合は、上の2点を先に解消すること。
+// v1.89.0 で管理ダッシュボードは admin_entry_stats ビュー経由の文字数だけを読むようになり、
+// アプリの経路からは本文が消えたが、①②は残るため**この文言は強められない**。
+// 運営者アクセスの範囲は app/privacy/page.tsx 6章で開示している。
 export const PRIVACY_ASSURANCE =
   "書いた記録は、あなただけのものです。ほかの利用者に見られることはありません。";
